@@ -3,7 +3,7 @@
 ### What is this repository for? ###
 
 This is a custom logger library, used in my other project.
-It provides basic text messages with customizable prefixes to relay importance of the message and/or group messages
+It provides basic text messages with customizable prefixes to relay importance of the message and/or group messages.
 
 ### How do I get set up? ###
 
