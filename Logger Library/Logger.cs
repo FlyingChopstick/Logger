@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
-using System.Configuration;
 using System.IO;
 using System.Linq;
 
@@ -12,19 +10,37 @@ namespace LoggerLib
     /// </summary>
     public enum MessageType
     {
+        /// <summary>
+        /// Simple message - no prefix
+        /// </summary>
         General = 0,
+        /// <summary>
+        /// Submessage: " |" prefix
+        /// </summary>
         GeneralSub = 1,
+        /// <summary>
+        /// Alert: "!" prefix
+        /// </summary>
         Alert = 2,
+        /// <summary>
+        /// Alert submessage: "! |" prefix
+        /// </summary>
         AlertSub = 3,
+        /// <summary>
+        /// High Alert: "!!" prefix
+        /// </summary>
         HighAlert = 4,
+        /// <summary>
+        /// High Alert submessage: "!! |" prefix
+        /// </summary>
         HighAlertSub = 5,
     }
+
+    /// <summary>
+    /// Custom logger, allows adding prefixes to messages according to message type
+    /// </summary>
     public class Logger
     {
-        /// <summary>
-        /// Paths section from App.Config
-        /// </summary>
-        private static NameValueCollection filestreamPaths;
         /// <summary>
         /// Log folder
         /// </summary>
@@ -38,84 +54,90 @@ namespace LoggerLib
         /// Message queue
         /// </summary>
         private static List<string> queue = new List<string>();
-
+        /// <summary>
+        /// Is console logging enabled or not
+        /// </summary>
         private static bool withConsole = false;
 
         /// <summary>
-        /// Initialization of the logger, creating new file
+        /// With console args - Initialization of the logger, creating new file.
+        /// <para>
+        /// Console logging may be enabled if "-console" argument is provided
+        /// </para>
         /// </summary>
-        public static void Initialize(string[] launch_args)
+        /// <param name="launch_args">Program launch arguments</param>
+        /// <param name="logFolder">Folder to store logs. WARNING: it will be emptied in certain conditions</param>
+        public static void Initialize(string[] launch_args, string logFolder)
         {
-            filestreamPaths = ConfigurationManager.GetSection("filestreamPaths") as NameValueCollection;
-            if (filestreamPaths != null)
+            //set log output folder
+            logPath = logFolder;
+            //set log file name
+            logFilePath = $"{logPath}\\log.txt";
+
+            //Console.WriteLine($"Creating log folder: {logPath}");//DEBUG
+            //Console.WriteLine($" |Log file: {logFilePath}");//DEBUG
+
+            //create log folder
+            Directory.CreateDirectory(logPath);
+
+            //get all filenames containing "log"
+            string[] files = Directory.GetFiles(logPath).Where<string>(file => file.Contains("log")).ToArray();
+            //file rotation controller
+            switch (files.Length)
             {
-                //log folder path
-                logPath = filestreamPaths["DebugLog"];
-                //log file path
-                logFilePath = $"{logPath}\\log.txt";
-                //Console.WriteLine($"Creating log folder: {logPath}");//DEBUG
-                //Console.WriteLine($" |Log file: {logFilePath}");//DEBUG
-                Directory.CreateDirectory(logPath);
-
-                //get all filenames containing "log"
-                string[] files = Directory.GetFiles(logPath).Where<string>(file => file.Contains("log")).ToArray();
-                //file rotation controller
-                switch (files.Length)
-                {
-                    case 0: break;
-                    case 1:
+                case 0: break;
+                case 1:
+                    {
+                        if (File.Exists($"{logPath}\\log.txt"))
                         {
-                            if (File.Exists($"{logPath}\\log.txt"))
-                            {
-                                File.Move($"{logPath}\\log.txt", $"{logPath}\\log1.txt");
-                            }
-                            else
-                            {
-                                //clears the directory
-                                foreach (string file in files)
-                                {
-                                    File.Delete(file);
-                                }
-                            }
-                            break;
+                            File.Move($"{logPath}\\log.txt", $"{logPath}\\log1.txt");
                         }
-                    case 2:
+                        else
                         {
-                            if (File.Exists($"{logPath}\\log.txt") && File.Exists($"{logPath}\\log1.txt"))
+                            //clears the directory
+                            foreach (string file in files)
                             {
-                                File.Move($"{logPath}\\log1.txt", $"{logPath}\\log2.txt");
-                                File.Move($"{logPath}\\log.txt", $"{logPath}\\log1.txt");
+                                File.Delete(file);
                             }
-                            else
-                            {
-                                foreach (string file in files)
-                                {
-                                    File.Delete(file);
-                                }
-                            }
-                            break;
                         }
-                    case 3:
+                        break;
+                    }
+                case 2:
+                    {
+                        if (File.Exists($"{logPath}\\log.txt") && File.Exists($"{logPath}\\log1.txt"))
                         {
-                            if (File.Exists($"{logPath}\\log.txt") && File.Exists($"{logPath}\\log1.txt") && File.Exists($"{logPath}\\log2.txt"))
-                            {
-                                File.Delete($"{logPath}\\log2.txt");
-                                File.Move($"{logPath}\\log1.txt", $"{logPath}\\log2.txt");
-                                File.Move($"{logPath}\\log.txt", $"{logPath}\\log1.txt");
-                            }
-                            else
-                            {
-                                foreach (string file in files)
-                                {
-                                    File.Delete(file);
-                                }
-                            }
-                            break;
+                            File.Move($"{logPath}\\log1.txt", $"{logPath}\\log2.txt");
+                            File.Move($"{logPath}\\log.txt", $"{logPath}\\log1.txt");
                         }
-                }
+                        else
+                        {
+                            foreach (string file in files)
+                            {
+                                File.Delete(file);
+                            }
+                        }
+                        break;
+                    }
+                case 3:
+                    {
+                        if (File.Exists($"{logPath}\\log.txt") && File.Exists($"{logPath}\\log1.txt") && File.Exists($"{logPath}\\log2.txt"))
+                        {
+                            File.Delete($"{logPath}\\log2.txt");
+                            File.Move($"{logPath}\\log1.txt", $"{logPath}\\log2.txt");
+                            File.Move($"{logPath}\\log.txt", $"{logPath}\\log1.txt");
+                        }
+                        else
+                        {
+                            foreach (string file in files)
+                            {
+                                File.Delete(file);
+                            }
+                        }
+                        break;
+                    }
             }
-
-
+            
+            //if launch argument "-console" is provided, enable console logging
             if (launch_args.Length != 0)
             {
                 if (launch_args.Contains("-console"))
@@ -124,6 +146,90 @@ namespace LoggerLib
                     Log(MessageType.Alert, "Console logging enabled.");
                 }
             }
+
+            Log(MessageType.Alert, "Logger initialization successfull");
+            LogDivideLine();
+        }
+
+        /// <summary>
+        /// Without console args - Initialization of the logger, creating new file.
+        /// <para>
+        /// Console logging cannot be enabled
+        /// </para>
+        /// </summary>
+        /// <param name="logFolder">Folder to store logs. WARNING: it will be emptied in certain conditions</param>
+        public static void Initialize(string logFolder)
+        {
+            //set log output folder
+            logPath = logFolder;
+            //set log file name
+            logFilePath = $"{logPath}\\log.txt";
+
+            //Console.WriteLine($"Creating log folder: {logPath}");//DEBUG
+            //Console.WriteLine($" |Log file: {logFilePath}");//DEBUG
+
+            //create log folder
+            Directory.CreateDirectory(logPath);
+
+            //get all filenames containing "log"
+            string[] files = Directory.GetFiles(logPath).Where<string>(file => file.Contains("log")).ToArray();
+            //file rotation controller
+            switch (files.Length)
+            {
+                case 0: break;
+                case 1:
+                    {
+                        if (File.Exists($"{logPath}\\log.txt"))
+                        {
+                            File.Move($"{logPath}\\log.txt", $"{logPath}\\log1.txt");
+                        }
+                        else
+                        {
+                            //clears the directory
+                            foreach (string file in files)
+                            {
+                                File.Delete(file);
+                            }
+                        }
+                        break;
+                    }
+                case 2:
+                    {
+                        if (File.Exists($"{logPath}\\log.txt") && File.Exists($"{logPath}\\log1.txt"))
+                        {
+                            File.Move($"{logPath}\\log1.txt", $"{logPath}\\log2.txt");
+                            File.Move($"{logPath}\\log.txt", $"{logPath}\\log1.txt");
+                        }
+                        else
+                        {
+                            foreach (string file in files)
+                            {
+                                File.Delete(file);
+                            }
+                        }
+                        break;
+                    }
+                case 3:
+                    {
+                        if (File.Exists($"{logPath}\\log.txt") && File.Exists($"{logPath}\\log1.txt") && File.Exists($"{logPath}\\log2.txt"))
+                        {
+                            File.Delete($"{logPath}\\log2.txt");
+                            File.Move($"{logPath}\\log1.txt", $"{logPath}\\log2.txt");
+                            File.Move($"{logPath}\\log.txt", $"{logPath}\\log1.txt");
+                        }
+                        else
+                        {
+                            foreach (string file in files)
+                            {
+                                File.Delete(file);
+                            }
+                        }
+                        break;
+                    }
+            }
+
+            Log(MessageType.Alert, "Logger initialization successfull");
+            LogDivideLine();
         }
 
         /// <summary>
@@ -178,7 +284,7 @@ namespace LoggerLib
                     }
                 case MessageType.AlertSub:
                     {
-                        message = $"!-{message}";
+                        message = $"! |{message}";
                         break;
                     }
                 case MessageType.HighAlert:
@@ -188,7 +294,7 @@ namespace LoggerLib
                     }
                 case MessageType.HighAlertSub:
                     {
-                        message = $"!!-{message}";
+                        message = $"!! |{message}";
                         break;
                     }
                 default: break;
@@ -254,7 +360,7 @@ namespace LoggerLib
                     {
                         for (int i = 0; i < messages.Length; i++)
                         {
-                            messages[i] = $"!!-{messages[i]}";
+                            messages[i] = $"!! |{messages[i]}";
                         }
                         break;
                     }
@@ -293,7 +399,7 @@ namespace LoggerLib
                         }
                     case MessageType.AlertSub:
                         {
-                            messages[i] = $"!-{messages[i]}";
+                            messages[i] = $"! |{messages[i]}";
                             break;
                         }
                     case MessageType.HighAlert:
@@ -303,7 +409,7 @@ namespace LoggerLib
                         }
                     case MessageType.HighAlertSub:
                         {
-                            messages[i] = $"!!-{messages[i]}";
+                            messages[i] = $"!! |{messages[i]}";
                             break;
                         }
                     default: break;
@@ -349,7 +455,7 @@ namespace LoggerLib
                     }
                 case MessageType.AlertSub:
                     {
-                        message = $"!-{message}";
+                        message = $"! |{message}";
                         break;
                     }
                 case MessageType.HighAlert:
@@ -359,7 +465,7 @@ namespace LoggerLib
                     }
                 case MessageType.HighAlertSub:
                     {
-                        message = $"!!-{message}";
+                        message = $"!! |{message}";
                         break;
                     }
                 default: break;
