@@ -48,6 +48,9 @@ namespace LoggerLib
     /// <summary>
     /// Custom logger, allows adding Prefixes to messages according to message type
     /// <para>
+    /// Use Initialize() it in the beginning of Main()
+    /// </para>
+    /// <para>
     /// Supports up to three total log files - latest and from two previous launches.
     /// Rotation is handled automatically.
     /// </para>
@@ -193,8 +196,8 @@ namespace LoggerLib
             },
             new string[] {
                 "Logger initialization complete",
-                $"Log path: {LogPath}",
                 $"Console logging enabled: {withConsole}",
+                $"Log path: {LogPath}",
                 $"{DateTime.UtcNow.ToString(new CultureInfo("en-GB"))}"
             });
             DividerDashedLine();
