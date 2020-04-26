@@ -57,39 +57,7 @@ namespace LoggerLib
     /// </summary>
     public static class Logger
     {
-        /// <summary>
-        /// Is console logging enabled or not
-        /// </summary>
-        private static bool withConsole = false;
-        /// <summary>
-        /// Is log path set or not
-        /// </summary>
-        private static bool isPathSet = false;
-
-        /// <summary>
-        /// Message queue
-        /// </summary>
-        private static List<string> queue = new List<string>();
-        /// <summary>
-        /// Message default prefix dictionary
-        /// <para>
-        /// Can be changed to customize prefixes
-        /// </para>
-        /// </summary>
-        public static Dictionary<MessageType, string> Prefixes { get; private set; }
-            = new Dictionary<MessageType, string>() 
-            {
-                { MessageType.General, "" },
-                { MessageType.GeneralSub, " |" },
-                { MessageType.Alert, "!" },
-                { MessageType.AlertSub, "! |" },
-                { MessageType.HighAlert, "!!" },
-                { MessageType.HighAlertSub, "!! |" },
-                { MessageType.Maintenance, "~" },
-                { MessageType.MaintenanceSub, "~ |" },
-            };
-
-        //PATH AND NAME==========================================================================================
+        //TOGGLES AND PATHS======================================================================================
         /// <summary>
         /// Default log folder
         /// </summary>
@@ -103,130 +71,50 @@ namespace LoggerLib
         /// </summary>
         public static string LogFilePath { get; private set; }
 
+        /// <summary>
+        /// Is console logging enabled or not
+        /// </summary>
+        private static bool withConsole = false;
+        /// <summary>
+        /// Is log path set or not
+        /// </summary>
+        private static bool isPathSet = false;
 
-        //MAINTENANCE============================================================================================
-        /// <summary>
-        /// Rename old logs, create new log file
-        /// </summary>
-        private static void LogSetup()
-        {
-            if (LogPath == "NOT SET")
-            {
-                throw new ArgumentException("Log path is not set. Have you Initialized Logger?");
-            }
 
-            //get all filenames containing "log"
-            string[] files = Directory.GetFiles(LogPath).Where<string>(file => file.Contains("log")).ToArray();
-            //file rotation controller
-            switch (files.Length)
-            {
-                case 0: break;
-                case 1:
-                    {
-                        if (File.Exists($"{LogPath}\\log.txt"))
-                        {
-                            //rename log.txt to log1.txt
-                            File.Move($"{LogPath}\\log.txt", $"{LogPath}\\log1.txt");
-                        }
-                        else
-                        {
-                            //clears the directory
-                            foreach (string file in files)
-                            {
-                                File.Delete(file);
-                            }
-                        }
-                        break;
-                    }
-                case 2:
-                    {
-                        if (File.Exists($"{LogPath}\\log.txt") && File.Exists($"{LogPath}\\log1.txt"))
-                        {
-                            File.Move($"{LogPath}\\log1.txt", $"{LogPath}\\log2.txt");
-                            File.Move($"{LogPath}\\log.txt", $"{LogPath}\\log1.txt");
-                        }
-                        else
-                        {
-                            foreach (string file in files)
-                            {
-                                File.Delete(file);
-                            }
-                        }
-                        break;
-                    }
-                case 3:
-                    {
-                        if (File.Exists($"{LogPath}\\log.txt") && File.Exists($"{LogPath}\\log1.txt") && File.Exists($"{LogPath}\\log2.txt"))
-                        {
-                            //delete the oldest log
-                            File.Delete($"{LogPath}\\log2.txt");
-                            File.Move($"{LogPath}\\log1.txt", $"{LogPath}\\log2.txt");
-                            File.Move($"{LogPath}\\log.txt", $"{LogPath}\\log1.txt");
-                        }
-                        else
-                        {
-                            foreach (string file in files)
-                            {
-                                File.Delete(file);
-                            }
-                        }
-                        break;
-                    }
-            }
-        }
+        //DESIGN=================================================================================================
         /// <summary>
-        /// Resets the Logger. You need to Initialize() to log again
-        /// </summary>
-        private static void Reset()
-        {
-            queue.Clear();
-            LogPath = "NOT SET";
-            LogFilePath = null;
-            withConsole = false;
-        }
-        /// <summary>
-        /// Creates a log header
-        /// </summary>
-        private static void Begin()
-        {
-            DividerDashedLine();
-            Log(new MessageType[] {
-                MessageType.Maintenance,
-                MessageType.MaintenanceSub,
-            },
-            new string[] {
-                "Logger initialization complete",
-                $"Console logging enabled: {withConsole}",
-                $"Log path: {LogPath}",
-                $"{DateTime.UtcNow.ToString(new CultureInfo("en-GB"))}"
-            });
-            DividerDashedLine();
-        }
-        /// <summary>
-        /// Creates a log footer and resets Logger data
+        /// Message default prefix dictionary
         /// <para>
-        /// Intended use - at the end of Main(), to record the time of process completion. 
-        /// </para>
-        /// <para>
-        /// Initialization() is required if logging is invoked further.
+        /// Can be changed to customize prefixes
         /// </para>
         /// </summary>
-        public static void End()
+        private static Dictionary<MessageType, string> Prefixes { get; }
+        = new Dictionary<MessageType, string>()
         {
-            DividerDashedLine();
-            Log(new MessageType[] {
-                MessageType.Maintenance,
-                MessageType.MaintenanceSub,
-            },
-            new string[] {
-                "Log write complete",
-                $"Log path: {LogPath}",
-                $"{DateTime.UtcNow.ToString(new CultureInfo("en-GB"))}"
-            });
-            DividerDashedLine();
-
-            Reset();
-        }
+            { MessageType.General, "" },
+            { MessageType.GeneralSub, " |" },
+            { MessageType.Alert, "!" },
+            { MessageType.AlertSub, "! |" },
+            { MessageType.HighAlert, "!!" },
+            { MessageType.HighAlertSub, "!! |" },
+            { MessageType.Maintenance, "~" },
+            { MessageType.MaintenanceSub, "~ |" },
+        };
+        /// <summary>
+        /// Console output text highlight
+        /// </summary>
+        private static Dictionary<MessageType, ConsoleColor> Highlights { get; }
+        = new Dictionary<MessageType, ConsoleColor>()
+        {
+            { MessageType.General, ConsoleColor.White },
+            { MessageType.GeneralSub, ConsoleColor.White },
+            { MessageType.Alert, ConsoleColor.Yellow },
+            { MessageType.AlertSub, ConsoleColor.Yellow},
+            { MessageType.HighAlert, ConsoleColor.Red },
+            { MessageType.HighAlertSub, ConsoleColor.Red },
+            { MessageType.Maintenance, ConsoleColor.DarkGray },
+            { MessageType.MaintenanceSub, ConsoleColor.DarkGray },
+        };
 
 
         //INITIALIZATION=========================================================================================
@@ -341,10 +229,10 @@ namespace LoggerLib
         /// <param name="launch_args">Program launch arguments</param>
         public static void Initialize(string[] launch_args)
         {
-            //if launch argument "-console" is provided, enable console logging
             if (launch_args.Length != 0)
             {
-                if (launch_args.Contains("-console"))
+                //if launch argument "-ToHconsole" is provided, enable console logging
+                if (launch_args.Contains(Arguments[ArgumentType.ConsoleLogging]))
                 {
                     withConsole = true;
                 }
@@ -400,6 +288,8 @@ namespace LoggerLib
             Begin();
         }
 
+
+
         //TYPELESS LOGGING=======================================================================================
         /// <summary>
         /// Log a single General message
@@ -412,11 +302,13 @@ namespace LoggerLib
                 throw new ArgumentException("Log path is not set. Have you used Initialize?");
             }
 
+            message = $"{Timestamp()} {Prefixes[MessageType.General]}{message}";
             using (StreamWriter sw = File.AppendText(LogFilePath))
             {
                 sw.WriteLine(message);
                 if (withConsole)
                 {
+                    Console.ForegroundColor = Highlights[MessageType.General];
                     Console.WriteLine(message);
                 }
             }
@@ -432,16 +324,22 @@ namespace LoggerLib
                 throw new ArgumentException("Log path is not set. Have you used Initialize?");
             }
 
+            int count = messages.Count();
+            for ( int i = 0; i < count; i++ )
+            {
+                messages[i] = $"{Timestamp()} {Prefixes[MessageType.General]}{messages[i]}";
+            }
+
             File.AppendAllLines(LogFilePath, messages);
             if (withConsole)
             {
+                Console.ForegroundColor = Highlights[MessageType.General];
                 foreach (string message in messages)
                 {
                     Console.WriteLine(message);
                 }
             }
         }
-
 
         //TYPED LOGGING==========================================================================================
         /// <summary>
@@ -456,13 +354,14 @@ namespace LoggerLib
                 throw new ArgumentException("Log path is not set. Have you used Initialize?");
             }
 
-            message = $"{Prefixes[messageType]}{message}";
+            message = $"{Timestamp()} {Prefixes[messageType]}{message}";
 
             using (StreamWriter sw = File.AppendText(LogFilePath))
             {
                 sw.WriteLine(message);
                 if (withConsole)
                 {
+                    Console.ForegroundColor = Highlights[messageType];
                     Console.WriteLine(message);
                 }
             }
@@ -481,12 +380,13 @@ namespace LoggerLib
 
             for (int i = 0; i < messages.Length; i++)
             {
-                messages[i] = $"{Prefixes[messageType]}{messages[i]}";
+                messages[i] = $"{Timestamp()} {Prefixes[messageType]}{messages[i]}";
             }
             File.AppendAllLines(LogFilePath, messages);
 
             if (withConsole)
             {
+                Console.ForegroundColor = Highlights[messageType];
                 foreach (string message in messages)
                 {
                     Console.WriteLine(message);
@@ -509,30 +409,46 @@ namespace LoggerLib
                 throw new ArgumentException("Log path is not set. Have you used Initialize?");
             }
 
+            
             int i;
-            for (i = 0; i < messageTypes.Length; i++)
-            {
-                messages[i] = $"{Prefixes[messageTypes[i]]}{messages[i]}";
-            }
-            if (messageTypes.Count() < messages.Count())
-            {
-                int last = i;
-                for (i = last; i < messages.Count(); i++)
-                {
-                    messages[i] = $"{Prefixes[messageTypes[last - 1]]}{messages[i]}";
-                }
-            }
-            File.AppendAllLines(LogFilePath, messages);
 
             if (withConsole)
             {
-                foreach (string message in messages)
+                for (i = 0; i < messageTypes.Length; i++)
                 {
-                    Console.WriteLine(message);
+                    messages[i] = $"{Timestamp()} {Prefixes[messageTypes[i]]}{messages[i]}";
+                    Console.ForegroundColor = Highlights[messageTypes[i]];
+                    Console.WriteLine(messages[i]);
+                }
+                if (messageTypes.Count() < messages.Count())
+                {
+                    int last = i;
+                    for (i = last; i < messages.Count(); i++)
+                    {
+                        messages[i] = $"{Timestamp()} {Prefixes[messageTypes[last - 1]]}{messages[i]}";
+
+                        Console.WriteLine(messages[i]);
+                    }
                 }
             }
-        }
+            else
+            {
+                for (i = 0; i < messageTypes.Length; i++)
+                {
+                    messages[i] = $"{Timestamp()} {Prefixes[messageTypes[i]]}{messages[i]}";
+                }
+                if (messageTypes.Count() < messages.Count())
+                {
+                    int last = i;
+                    for (i = last; i < messages.Count(); i++)
+                    {
+                        messages[i] = $"{Timestamp()} {Prefixes[messageTypes[last - 1]]}{messages[i]}";
+                    }
+                }
+            }
 
+            File.AppendAllLines(LogFilePath, messages);
+        }
 
         //QUEUED LOGGING=========================================================================================
         /// <summary>
@@ -546,7 +462,13 @@ namespace LoggerLib
                 throw new ArgumentException("Log path is not set. Have you used Initialize?");
             }
 
+            message = $"{Timestamp()} {Prefixes[MessageType.General]}{message}";
             queue.Add(message);
+            if (withConsole)
+            {
+                Console.ForegroundColor = Highlights[MessageType.General];
+                Console.WriteLine(message);
+            }
         }
         /// <summary>
         /// Add message with a specified type to the log queue
@@ -560,8 +482,15 @@ namespace LoggerLib
                 throw new ArgumentException("Log path is not set. Have you used Initialize?");
             }
 
-            message = $"{Prefixes[messageType]}{message}";
+            message = $"{Timestamp()} {Prefixes[messageType]}{message}";
             queue.Add(message);
+
+            if (withConsole)
+            {
+                Console.ForegroundColor = Highlights[messageType];
+                Console.WriteLine(message);
+            }
+
         }
         /// <summary>
         /// Logs queued messages and clears queue
@@ -580,6 +509,7 @@ namespace LoggerLib
         }
 
 
+
         //DIVIDERS===============================================================================================
         /// <summary>
         /// Adds an empty line to the log
@@ -591,6 +521,7 @@ namespace LoggerLib
                 sw.WriteLine();
                 if (withConsole)
                 {
+                    Console.ResetColor();
                     Console.WriteLine();
                 }
             }
@@ -605,9 +536,202 @@ namespace LoggerLib
                 sw.WriteLine("----------------------------------------------");
                 if (withConsole)
                 {
+                    Console.ResetColor();
                     Console.WriteLine("----------------------------------------------");
                 }
             }
         }
+
+
+        //MISCELLANEOUS==========================================================================================
+        /// <summary>
+        /// Rename old logs, create new log file
+        /// </summary>
+        private static void LogSetup()
+        {
+            if (LogPath == "NOT SET")
+            {
+                throw new ArgumentException("Log path is not set. Have you Initialized Logger?");
+            }
+
+            //get all filenames containing "log"
+            string[] files = Directory.GetFiles(LogPath).Where<string>(file => file.Contains("log")).ToArray();
+            //file rotation controller
+            switch (files.Length)
+            {
+                case 0: break;
+                case 1:
+                    {
+                        if (File.Exists($"{LogPath}\\log.txt"))
+                        {
+                            //rename log.txt to log1.txt
+                            File.Move($"{LogPath}\\log.txt", $"{LogPath}\\log1.txt");
+                        }
+                        else
+                        {
+                            //clears the directory
+                            foreach (string file in files)
+                            {
+                                File.Delete(file);
+                            }
+                        }
+                        break;
+                    }
+                case 2:
+                    {
+                        if (File.Exists($"{LogPath}\\log.txt") && File.Exists($"{LogPath}\\log1.txt"))
+                        {
+                            File.Move($"{LogPath}\\log1.txt", $"{LogPath}\\log2.txt");
+                            File.Move($"{LogPath}\\log.txt", $"{LogPath}\\log1.txt");
+                        }
+                        else
+                        {
+                            foreach (string file in files)
+                            {
+                                File.Delete(file);
+                            }
+                        }
+                        break;
+                    }
+                case 3:
+                    {
+                        if (File.Exists($"{LogPath}\\log.txt") && File.Exists($"{LogPath}\\log1.txt") && File.Exists($"{LogPath}\\log2.txt"))
+                        {
+                            //delete the oldest log
+                            File.Delete($"{LogPath}\\log2.txt");
+                            File.Move($"{LogPath}\\log1.txt", $"{LogPath}\\log2.txt");
+                            File.Move($"{LogPath}\\log.txt", $"{LogPath}\\log1.txt");
+                        }
+                        else
+                        {
+                            foreach (string file in files)
+                            {
+                                File.Delete(file);
+                            }
+                        }
+                        break;
+                    }
+            }
+        }
+        /// <summary>
+        /// Resets the Logger. You need to Initialize() to log again
+        /// </summary>
+        private static void Reset()
+        {
+            Console.ResetColor();
+            queue.Clear();
+            LogPath = "NOT SET";
+            LogFilePath = null;
+            withConsole = false;
+        }
+        /// <summary>
+        /// Creates a log header
+        /// </summary>
+        private static void Begin()
+        {
+            DividerDashedLine();
+
+            //header messages
+            string[] header = new string[]
+            {
+                $"{Prefixes[MessageType.Maintenance]}Logger initialization complete",
+                $"{Prefixes[MessageType.MaintenanceSub]}Console logging enabled: {withConsole}",
+                $"{Prefixes[MessageType.MaintenanceSub]}Log path: {LogFilePath}",
+                $"{Prefixes[MessageType.MaintenanceSub]}{DateTime.UtcNow.ToString(new CultureInfo("en-GB"))}"
+            };
+            File.AppendAllLines(LogFilePath, header);
+
+            //print to console with the proper highlight
+            if (withConsole)
+            {
+                int i = 1;
+                int count = header.Count();
+
+                Console.ForegroundColor = Highlights[MessageType.Maintenance];
+                Console.WriteLine(header[0]);
+                Console.ForegroundColor = Highlights[MessageType.MaintenanceSub];
+                while (i < count)
+                {
+                    Console.WriteLine(header[i]);
+                    i++;
+                }
+            }
+
+            DividerDashedLine();
+        }
+        /// <summary>
+        /// Creates a log footer and resets Logger data
+        /// <para>
+        /// Intended use - at the end of Main(), to record the time of process completion. 
+        /// </para>
+        /// <para>
+        /// Initialization() is required if logging is invoked further.
+        /// </para>
+        /// </summary>
+        public static void End()
+        {
+            DividerDashedLine();
+
+            //footer messages
+            string[] footer = new string[]
+            {
+                $"{Prefixes[MessageType.Maintenance]}Log write complete",
+                $"{Prefixes[MessageType.MaintenanceSub]}Log path: {LogFilePath}",
+                $"{Prefixes[MessageType.MaintenanceSub]}{DateTime.UtcNow.ToString(new CultureInfo("en-GB"))}"
+            };
+            File.AppendAllLines(LogFilePath, footer);
+
+            //print to console with the proper highlight
+            if (withConsole)
+            {
+                int i = 1;
+                int count = footer.Count();
+
+                Console.ForegroundColor = Highlights[MessageType.Maintenance];
+                Console.WriteLine(footer[0]);
+                Console.ForegroundColor = Highlights[MessageType.MaintenanceSub];
+                while (i < count)
+                {
+                    Console.WriteLine(footer[i]);
+                    i++;
+                }
+            }
+
+            DividerDashedLine();
+
+            Reset();
+        }
+        /// <summary>
+        /// Provides current time
+        /// </summary>
+        /// <returns>Current time in HH:mm:ss</returns>
+        private static string Timestamp()
+        {
+            return $"[{DateTime.UtcNow.ToString("HH:mm:ss")}]";
+        }
+
+        /// <summary>
+        /// Message queue
+        /// </summary>
+        private static List<string> queue = new List<string>();
+
+        /// <summary>
+        /// Types of console arguments
+        /// </summary>
+        private enum ArgumentType
+        {
+            /// <summary>
+            /// Console logging
+            /// </summary>
+            ConsoleLogging = 0,
+        }
+        /// <summary>
+        /// Console arguments
+        /// </summary>
+        private static Dictionary<ArgumentType, string> Arguments { get; }
+        = new Dictionary<ArgumentType, string>()
+        {
+            { ArgumentType.ConsoleLogging, "-ToHconsole" },
+        };
     }
 }
