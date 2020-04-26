@@ -11,4 +11,4 @@ You have to use one of the variants of Initialize to set up the logger.
 It is best to do it in the beginning of the main function, so that you can safely log things from other parts of the program.
 If you want to create footer, add Logger.End() near the end of the main.
 
-You can use launch arguments array to initialize console logging, instead of the hard-coded way.
+You can use launch arguments array to initialize console logging (-ToHconsole), instead of the hard-coded way.
