@@ -61,7 +61,7 @@ namespace LoggerLib
         /// <summary>
         /// Default log folder
         /// </summary>
-        public const string defaultLogFolder = @".\\Logs";
+        private const string defaultLogFolder = @".\\Logs";
         /// <summary>
         /// Log folder
         /// </summary>
@@ -72,17 +72,19 @@ namespace LoggerLib
         public static string LogFilePath { get; private set; }
 
         /// <summary>
+        /// Is log path set or not
+        /// </summary>
+        private static bool isPathSet = false;
+
+        /// <summary>
         /// Is console logging enabled or not
         /// </summary>
         private static bool withConsole = false;
         /// <summary>
-        /// Is log path set or not
-        /// </summary>
-        private static bool isPathSet = false;
-        /// <summary>
         /// Should library throw error or relay it to the event
         /// </summary>
         private static bool throwError = false;
+
 
         //DESIGN=================================================================================================
         /// <summary>
@@ -91,33 +93,53 @@ namespace LoggerLib
         /// Can be changed to customize prefixes
         /// </para>
         /// </summary>
-        private static Dictionary<MessageType, string> Prefixes
+        internal static readonly Dictionary<MessageType, string> Prefixes
         = new Dictionary<MessageType, string>()
-        {
-            { MessageType.General, "" },
-            { MessageType.GeneralSub, " |" },
-            { MessageType.Alert, "!" },
-            { MessageType.AlertSub, "! |" },
-            { MessageType.HighAlert, "!!" },
-            { MessageType.HighAlertSub, "!! |" },
-            { MessageType.Maintenance, "~" },
-            { MessageType.MaintenanceSub, "~ |" },
-        };
+            {
+                { MessageType.General, "" },
+                { MessageType.GeneralSub, " |" },
+                { MessageType.Alert, "!" },
+                { MessageType.AlertSub, "! |" },
+                { MessageType.HighAlert, "!!" },
+                { MessageType.HighAlertSub, "!! |" },
+                { MessageType.Maintenance, "~" },
+                { MessageType.MaintenanceSub, "~ |" },
+            };
         /// <summary>
         /// Console output text highlight
         /// </summary>
-        private static Dictionary<MessageType, ConsoleColor> Highlights
+        internal static readonly Dictionary<MessageType, ConsoleColor> Highlights
         = new Dictionary<MessageType, ConsoleColor>()
-        {
-            { MessageType.General, ConsoleColor.White },
-            { MessageType.GeneralSub, ConsoleColor.White },
-            { MessageType.Alert, ConsoleColor.Yellow },
-            { MessageType.AlertSub, ConsoleColor.Yellow},
-            { MessageType.HighAlert, ConsoleColor.Red },
-            { MessageType.HighAlertSub, ConsoleColor.Red },
-            { MessageType.Maintenance, ConsoleColor.DarkGray },
-            { MessageType.MaintenanceSub, ConsoleColor.DarkGray },
-        };
+            {
+                { MessageType.General, ConsoleColor.White },
+                { MessageType.GeneralSub, ConsoleColor.White },
+                { MessageType.Alert, ConsoleColor.Yellow },
+                { MessageType.AlertSub, ConsoleColor.Yellow},
+                { MessageType.HighAlert, ConsoleColor.Red },
+                { MessageType.HighAlertSub, ConsoleColor.Red },
+                { MessageType.Maintenance, ConsoleColor.DarkGray },
+                { MessageType.MaintenanceSub, ConsoleColor.DarkGray },
+            };
+
+        /// <summary>
+        /// Console arguments
+        /// </summary>
+        internal static readonly Dictionary<ArgumentType, string> Arguments
+            = new Dictionary<ArgumentType, string>()
+            {
+                { ArgumentType.ConsoleLogging, "-ToHconsole" },
+                { ArgumentType.ThrowError, "-ToHerror" },
+            };
+
+        /// <summary>
+        /// Error messages
+        /// </summary>
+        internal static readonly Dictionary<ErrorType, string> ErrorMessages
+            = new Dictionary<ErrorType, string>()
+            {
+                { ErrorType.PathNotSet, "Log path is not set. Have you used Initialize?" },
+                { ErrorType.PathNotAccessible, "Cannot access log directory" },
+            };
 
 
         //INITIALIZATION=========================================================================================
@@ -746,18 +768,14 @@ namespace LoggerLib
                     default: break;
                 }
             }
-            onLogError?.Invoke(errorType, ErrorMessages[errorType]);
+            OnLogError?.Invoke(errorType, ErrorMessages[errorType]);
         }
 
-        /// <summary>
-        /// Message queue
-        /// </summary>
-        private static List<string> queue = new List<string>();
 
         /// <summary>
         /// Types of console arguments
         /// </summary>
-        private enum ArgumentType
+        internal enum ArgumentType
         {
             /// <summary>
             /// Console logging
@@ -768,16 +786,6 @@ namespace LoggerLib
             /// </summary>
             ThrowError = 1,
         }
-        /// <summary>
-        /// Console arguments
-        /// </summary>
-        private static Dictionary<ArgumentType, string> Arguments
-            = new Dictionary<ArgumentType, string>()
-            {
-                { ArgumentType.ConsoleLogging, "-ToHconsole" },
-                { ArgumentType.ThrowError, "-ToHerror" },
-            };
-
         /// <summary>
         /// Logger error types
         /// </summary>
@@ -792,15 +800,11 @@ namespace LoggerLib
             /// </summary>
             PathNotAccessible = 1,
         }
+
         /// <summary>
-        /// Error messages
+        /// Message queue
         /// </summary>
-        private static Dictionary<ErrorType, string> ErrorMessages
-            = new Dictionary<ErrorType, string>()
-            {
-                { ErrorType.PathNotSet, "Log path is not set. Have you used Initialize?" },
-                { ErrorType.PathNotAccessible, "Cannot access log directory" },
-            };
+        private static List<string> queue = new List<string>();
 
         /// <summary>
         /// Delegate for logger errors
@@ -811,6 +815,6 @@ namespace LoggerLib
         /// <summary>
         /// Invoked on logger error, use to relay error information to your error handler
         /// </summary>
-        public static event LogError onLogError;
+        public static event LogError OnLogError;
     }
 }
