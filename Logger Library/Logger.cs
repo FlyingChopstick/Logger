@@ -36,11 +36,11 @@ namespace LoggerLib
         /// </summary>
         HighAlertSub = 5,
         /// <summary>
-        /// For Maintenance messages: "~ " default prefix
+        /// Maintenance message: "~ " default prefix
         /// </summary>
         Maintenance = 6,
         /// <summary>
-        /// For Maintenance submessages: "~ |" default prefix
+        /// Maintenance submessage: "~ |" default prefix
         /// </summary>
         MaintenanceSub = 7,
     }
@@ -79,7 +79,10 @@ namespace LoggerLib
         /// Is log path set or not
         /// </summary>
         private static bool isPathSet = false;
-
+        /// <summary>
+        /// Should library throw error or relay it to the event
+        /// </summary>
+        private static bool throwError = false;
 
         //DESIGN=================================================================================================
         /// <summary>
@@ -88,7 +91,7 @@ namespace LoggerLib
         /// Can be changed to customize prefixes
         /// </para>
         /// </summary>
-        private static Dictionary<MessageType, string> Prefixes { get; }
+        private static Dictionary<MessageType, string> Prefixes
         = new Dictionary<MessageType, string>()
         {
             { MessageType.General, "" },
@@ -103,7 +106,7 @@ namespace LoggerLib
         /// <summary>
         /// Console output text highlight
         /// </summary>
-        private static Dictionary<MessageType, ConsoleColor> Highlights { get; }
+        private static Dictionary<MessageType, ConsoleColor> Highlights
         = new Dictionary<MessageType, ConsoleColor>()
         {
             { MessageType.General, ConsoleColor.White },
@@ -231,10 +234,15 @@ namespace LoggerLib
         {
             if (launch_args.Length != 0)
             {
-                //if launch argument "-ToHconsole" is provided, enable console logging
+                //if launch argument for console logging is provided, enable console logging
                 if (launch_args.Contains(Arguments[ArgumentType.ConsoleLogging]))
                 {
                     withConsole = true;
+                }
+                //if launch argument for throwing error is provided, enable console logging
+                if (launch_args.Contains(Arguments[ArgumentType.ThrowError]))
+                {
+                    throwError = true;
                 }
             }
 
@@ -299,7 +307,7 @@ namespace LoggerLib
         {
             if (isPathSet == false)
             {
-                throw new ArgumentException("Log path is not set. Have you used Initialize?");
+                DispatchError(ErrorType.PathNotSet);
             }
 
             message = $"{Timestamp()} {Prefixes[MessageType.General]}{message}";
@@ -321,7 +329,7 @@ namespace LoggerLib
         {
             if (isPathSet == false)
             {
-                throw new ArgumentException("Log path is not set. Have you used Initialize?");
+                DispatchError(ErrorType.PathNotSet);
             }
 
             int count = messages.Count();
@@ -351,7 +359,7 @@ namespace LoggerLib
         {
             if (isPathSet == false)
             {
-                throw new ArgumentException("Log path is not set. Have you used Initialize?");
+                DispatchError(ErrorType.PathNotSet);
             }
 
             message = $"{Timestamp()} {Prefixes[messageType]}{message}";
@@ -375,7 +383,7 @@ namespace LoggerLib
         {
             if (isPathSet == false)
             {
-                throw new ArgumentException("Log path is not set. Have you used Initialize?");
+                DispatchError(ErrorType.PathNotSet);
             }
 
             for (int i = 0; i < messages.Length; i++)
@@ -406,9 +414,8 @@ namespace LoggerLib
         {
             if (isPathSet == false)
             {
-                throw new ArgumentException("Log path is not set. Have you used Initialize?");
+                DispatchError(ErrorType.PathNotSet);
             }
-
             
             int i;
 
@@ -459,7 +466,7 @@ namespace LoggerLib
         {
             if (isPathSet == false)
             {
-                throw new ArgumentException("Log path is not set. Have you used Initialize?");
+                DispatchError(ErrorType.PathNotSet);
             }
 
             message = $"{Timestamp()} {Prefixes[MessageType.General]}{message}";
@@ -479,7 +486,7 @@ namespace LoggerLib
         {
             if (isPathSet == false)
             {
-                throw new ArgumentException("Log path is not set. Have you used Initialize?");
+                DispatchError(ErrorType.PathNotSet);
             }
 
             message = $"{Timestamp()} {Prefixes[messageType]}{message}";
@@ -551,66 +558,73 @@ namespace LoggerLib
         {
             if (LogPath == "NOT SET")
             {
-                throw new ArgumentException("Log path is not set. Have you Initialized Logger?");
+                DispatchError(ErrorType.PathNotSet);
             }
 
-            //get all filenames containing "log"
-            string[] files = Directory.GetFiles(LogPath).Where<string>(file => file.Contains("log")).ToArray();
-            //file rotation controller
-            switch (files.Length)
+            try
             {
-                case 0: break;
-                case 1:
-                    {
-                        if (File.Exists($"{LogPath}\\log.txt"))
+                //get all filenames containing "log"
+                string[] files = Directory.GetFiles(LogPath).Where<string>(file => file.Contains("log")).ToArray();
+                //file rotation controller
+                switch (files.Length)
+                {
+                    case 0: break;
+                    case 1:
                         {
-                            //rename log.txt to log1.txt
-                            File.Move($"{LogPath}\\log.txt", $"{LogPath}\\log1.txt");
-                        }
-                        else
-                        {
-                            //clears the directory
-                            foreach (string file in files)
+                            if (File.Exists($"{LogPath}\\log.txt"))
                             {
-                                File.Delete(file);
+                                //rename log.txt to log1.txt
+                                File.Move($"{LogPath}\\log.txt", $"{LogPath}\\log1.txt");
                             }
-                        }
-                        break;
-                    }
-                case 2:
-                    {
-                        if (File.Exists($"{LogPath}\\log.txt") && File.Exists($"{LogPath}\\log1.txt"))
-                        {
-                            File.Move($"{LogPath}\\log1.txt", $"{LogPath}\\log2.txt");
-                            File.Move($"{LogPath}\\log.txt", $"{LogPath}\\log1.txt");
-                        }
-                        else
-                        {
-                            foreach (string file in files)
+                            else
                             {
-                                File.Delete(file);
+                                //clears the directory
+                                foreach (string file in files)
+                                {
+                                    File.Delete(file);
+                                }
                             }
+                            break;
                         }
-                        break;
-                    }
-                case 3:
-                    {
-                        if (File.Exists($"{LogPath}\\log.txt") && File.Exists($"{LogPath}\\log1.txt") && File.Exists($"{LogPath}\\log2.txt"))
+                    case 2:
                         {
-                            //delete the oldest log
-                            File.Delete($"{LogPath}\\log2.txt");
-                            File.Move($"{LogPath}\\log1.txt", $"{LogPath}\\log2.txt");
-                            File.Move($"{LogPath}\\log.txt", $"{LogPath}\\log1.txt");
-                        }
-                        else
-                        {
-                            foreach (string file in files)
+                            if (File.Exists($"{LogPath}\\log.txt") && File.Exists($"{LogPath}\\log1.txt"))
                             {
-                                File.Delete(file);
+                                File.Move($"{LogPath}\\log1.txt", $"{LogPath}\\log2.txt");
+                                File.Move($"{LogPath}\\log.txt", $"{LogPath}\\log1.txt");
                             }
+                            else
+                            {
+                                foreach (string file in files)
+                                {
+                                    File.Delete(file);
+                                }
+                            }
+                            break;
                         }
-                        break;
-                    }
+                    case 3:
+                        {
+                            if (File.Exists($"{LogPath}\\log.txt") && File.Exists($"{LogPath}\\log1.txt") && File.Exists($"{LogPath}\\log2.txt"))
+                            {
+                                //delete the oldest log
+                                File.Delete($"{LogPath}\\log2.txt");
+                                File.Move($"{LogPath}\\log1.txt", $"{LogPath}\\log2.txt");
+                                File.Move($"{LogPath}\\log.txt", $"{LogPath}\\log1.txt");
+                            }
+                            else
+                            {
+                                foreach (string file in files)
+                                {
+                                    File.Delete(file);
+                                }
+                            }
+                            break;
+                        }
+                }
+            }
+            catch (AccessViolationException)
+            {
+                DispatchError(ErrorType.PathNotAccessible);
             }
         }
         /// <summary>
@@ -622,6 +636,7 @@ namespace LoggerLib
             queue.Clear();
             LogPath = "NOT SET";
             LogFilePath = null;
+            isPathSet = false;
             withConsole = false;
         }
         /// <summary>
@@ -711,6 +726,30 @@ namespace LoggerLib
         }
 
         /// <summary>
+        /// Invokes onLogError or throws exception if throwError is enabled
+        /// </summary>
+        /// <param name="errorType"></param>
+        private static void DispatchError(ErrorType errorType)
+        {
+            if (throwError)
+            {
+                switch (errorType)
+                {
+                    case ErrorType.PathNotSet:
+                        {
+                            throw new ArgumentException(ErrorMessages[ErrorType.PathNotSet]);
+                        }
+                    case ErrorType.PathNotAccessible:
+                        {
+                            throw new AccessViolationException(ErrorMessages[ErrorType.PathNotAccessible]);
+                        }
+                    default: break;
+                }
+            }
+            onLogError?.Invoke(errorType, ErrorMessages[errorType]);
+        }
+
+        /// <summary>
         /// Message queue
         /// </summary>
         private static List<string> queue = new List<string>();
@@ -724,14 +763,54 @@ namespace LoggerLib
             /// Console logging
             /// </summary>
             ConsoleLogging = 0,
+            /// <summary>
+            /// Should library throw error or relay it
+            /// </summary>
+            ThrowError = 1,
         }
         /// <summary>
         /// Console arguments
         /// </summary>
-        private static Dictionary<ArgumentType, string> Arguments { get; }
-        = new Dictionary<ArgumentType, string>()
+        private static Dictionary<ArgumentType, string> Arguments
+            = new Dictionary<ArgumentType, string>()
+            {
+                { ArgumentType.ConsoleLogging, "-ToHconsole" },
+                { ArgumentType.ThrowError, "-ToHerror" },
+            };
+
+        /// <summary>
+        /// Logger error types
+        /// </summary>
+        public enum ErrorType
         {
-            { ArgumentType.ConsoleLogging, "-ToHconsole" },
-        };
+            /// <summary>
+            /// Log directory path is not set
+            /// </summary>
+            PathNotSet = 0,
+            /// <summary>
+            /// Log directory is not accessible
+            /// </summary>
+            PathNotAccessible = 1,
+        }
+        /// <summary>
+        /// Error messages
+        /// </summary>
+        private static Dictionary<ErrorType, string> ErrorMessages
+            = new Dictionary<ErrorType, string>()
+            {
+                { ErrorType.PathNotSet, "Log path is not set. Have you used Initialize?" },
+                { ErrorType.PathNotAccessible, "Cannot access log directory" },
+            };
+
+        /// <summary>
+        /// Delegate for logger errors
+        /// </summary>
+        /// <param name="errorType">Type of the error</param>
+        /// <param name="errorMessage">Error message</param>
+        public delegate void LogError(ErrorType errorType, string errorMessage);
+        /// <summary>
+        /// Invoked on logger error, use to relay error information to your error handler
+        /// </summary>
+        public static event LogError onLogError;
     }
 }
