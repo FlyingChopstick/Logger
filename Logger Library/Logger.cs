@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Linq.Expressions;
 
 namespace LoggerLib
 {
@@ -57,7 +59,7 @@ namespace LoggerLib
     /// </summary>
     public static class Logger
     {
-         //INITIALIZATION=========================================================================================
+        //INITIALIZATION=========================================================================================
         /// <summary>
         /// Initialization of the logger using default log folder
         /// <para>
@@ -169,20 +171,7 @@ namespace LoggerLib
         /// <param name="launch_args">Program launch arguments</param>
         public static void Initialize(string[] launch_args)
         {
-            if (launch_args.Length != 0)
-            {
-                //if launch argument for console logging is provided, enable console logging
-                if (launch_args.Contains(Arguments[ArgumentType.ConsoleLogging]))
-                {
-                    withConsole = true;
-                }
-                //if launch argument for throwing error is provided, enable console logging
-                if (launch_args.Contains(Arguments[ArgumentType.ThrowError]))
-                {
-                    throwError = true;
-                }
-            }
-
+            ReadArguments(launch_args);
             //set log output folder
             LogPath = defaultLogFolder;
             isPathSet = true;
@@ -208,15 +197,7 @@ namespace LoggerLib
         /// <param name="launch_args">Program launch arguments</param>
         public static void Initialize(string logFolder, string[] launch_args)
         {
-            //if launch argument "-console" is provided, enable console logging
-            if (launch_args.Length != 0)
-            {
-                if (launch_args.Contains("-console"))
-                {
-                    withConsole = true;
-                }
-            }
-
+            ReadArguments(launch_args);
             //set log output folder
             LogPath = logFolder;
             isPathSet = true;
@@ -519,6 +500,63 @@ namespace LoggerLib
         /// </summary>
         private static List<string> queue = new List<string>();
 
+        //ERROR LOGGING==========================================================================================
+        /// <summary>
+        /// Runs dangerous piece of code inside a try/catch and logs exception.
+        /// </summary>
+        /// <typeparam name="T">Dangerous function Return type</typeparam>
+        /// <param name="dangerousCode">Code that can throw an exception</param>
+        /// <param name="logTrace">Whether to log stack</param>
+        /// <returns></returns>
+        public static T Catch<T>(Func<T> dangerousCode, bool logTrace)
+        {
+            try
+            {
+                return dangerousCode.Invoke();
+            }
+            catch (Exception ex)
+            {
+                errorCount++;
+                DividerDashedLine(ConsoleColor.Red);
+                Log(MessageType.HighAlert, $"{ex.GetType().Name} occured in {ex.TargetSite.DeclaringType.FullName}");
+                if (logTrace)
+                {
+                    Log(MessageType.HighAlertSub, "Call stack:");
+                    Console.ForegroundColor = ConsoleColor.White;
+                    Log(ex.StackTrace);
+                }
+                DividerDashedLine(ConsoleColor.Red);
+                throw ex;
+            }
+        }
+        /// <summary>
+        /// Runs dangerous piece of code inside a try/catch and logs exception.
+        /// </summary>
+        /// <param name="dangerousCode">Code that can throw an exception</param>
+        /// <param name="logTrace">Whether to log stack</param>
+        /// <returns></returns>
+        public static void Catch(Action dangerousCode, bool logTrace)
+        {
+            try
+            {
+                dangerousCode.Invoke();
+            }
+            catch (Exception ex)
+            {
+                errorCount++;
+                DividerDashedLine(ConsoleColor.Red);
+                Log(MessageType.HighAlert, $"{ex.GetType().Name} occured in {ex.TargetSite.DeclaringType.FullName}");
+                if (logTrace)
+                {
+                    Log(MessageType.HighAlertSub, "Call stack:");
+                    Console.ForegroundColor = ConsoleColor.White;
+                    Log(ex.StackTrace);
+                }
+                DividerDashedLine(ConsoleColor.Red);
+                throw ex;
+            }
+        }
+
 
         //DIVIDERS===============================================================================================
         /// <summary>
@@ -575,9 +613,35 @@ namespace LoggerLib
                 }
             }
         }
+        /// <summary>
+        /// Adds a division line to the log
+        /// </summary>
+        /// <param name="color">Line color in console</param>
+        public static void DividerDashedLine(ConsoleColor color)
+        {
+            Console.ForegroundColor = color;
+            if (isPathSet)
+            {
+                try
+                {
+                    using (StreamWriter sw = File.AppendText(LogFilePath))
+                    {
+                        sw.WriteLine("----------------------------------------------");
+                        if (withConsole)
+                        {
+                            Console.WriteLine("----------------------------------------------");
+                            Console.ResetColor();
+                        }
+                    }
+                }
+                catch (AccessViolationException)
+                {
+                    DispatchError(ErrorType.PathNotAccessible);
+                }
+            }
+        }
 
-
-        //TOGGLES AND PATHS======================================================================================
+        //STATES AND PATHS=======================================================================================
         /// <summary>
         /// Default log folder
         /// </summary>
@@ -711,6 +775,27 @@ namespace LoggerLib
 
 
         //MISCELLANEOUS==========================================================================================
+        /// <summary>
+        /// Reads launch arguments and enables required parametres
+        /// </summary>
+        /// <param name="launch_args"></param>
+        private static void ReadArguments(string[] launch_args)
+        { 
+            if (launch_args.Length != 0)
+            {
+                //if launch argument for console logging is provided, enable console logging
+                if (launch_args.Contains(Arguments[ArgumentType.ConsoleLogging]))
+                {
+                    withConsole = true;
+                }
+                //if launch argument for throwing error is provided, library will throw errors instead of relaying
+                if (launch_args.Contains(Arguments[ArgumentType.ThrowError]))
+                {
+                    throwError = true;
+                }
+            }
+        }
+
         /// <summary>
         /// Rename old logs, create new log file
         /// </summary>
