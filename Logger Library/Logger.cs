@@ -516,7 +516,7 @@ namespace LoggerLib
             }
             catch (Exception ex)
             {
-                errorCount++;
+                ErrorCount++;
                 DividerDashedLine(ConsoleColor.Red);
                 Log(MessageType.HighAlert, $"{ex.GetType().Name} occured in {ex.TargetSite.DeclaringType.FullName}");
                 if (logTrace)
@@ -543,7 +543,7 @@ namespace LoggerLib
             }
             catch (Exception ex)
             {
-                errorCount++;
+                ErrorCount++;
                 DividerDashedLine(ConsoleColor.Red);
                 Log(MessageType.HighAlert, $"{ex.GetType().Name} occured in {ex.TargetSite.DeclaringType.FullName}");
                 if (logTrace)
@@ -659,10 +659,6 @@ namespace LoggerLib
         /// Is log path set or not
         /// </summary>
         private static bool isPathSet = false;
-        /// <summary>
-        /// Count of relayed errors 
-        /// </summary>
-        private static int errorCount = 0;
 
         /// <summary>
         /// Is console logging enabled or not
@@ -883,7 +879,7 @@ namespace LoggerLib
             LogFilePath = "NOT SET";
             isPathSet = false;
             withConsole = false;
-            errorCount = 0;
+            ErrorCount = 0;
         }
         /// <summary>
         /// Creates a log header
@@ -935,12 +931,12 @@ namespace LoggerLib
             string[] footer;
 
             //footer messages
-            if (errorCount > 0)
+            if (ErrorCount > 0)
             {
                 footer = new string[]
                 {
                 $"{Prefixes[MessageType.Maintenance]}Log write complete",
-                $"{Prefixes[MessageType.MaintenanceSub]}Errors encountered: {errorCount}",
+                $"{Prefixes[MessageType.MaintenanceSub]}Errors encountered: {ErrorCount}",
                 $"{Prefixes[MessageType.MaintenanceSub]}Log path: {LogFilePath}",
                 $"{Prefixes[MessageType.MaintenanceSub]}{DateTime.UtcNow.ToString(new CultureInfo("en-GB"))}"
                 };
@@ -1006,8 +1002,14 @@ namespace LoggerLib
                     default: break;
                 }
             }
-            errorCount++;
             OnLogError?.Invoke(errorType, ErrorMessages[errorType]);
         }
+
+
+        //STATS==================================================================================================
+        /// <summary>
+        /// Number of logged errors 
+        /// </summary>
+        public static int ErrorCount { get; private set; } = 0
     }
 }
