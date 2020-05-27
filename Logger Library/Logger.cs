@@ -36,11 +36,11 @@ namespace LoggerLib
         /// </summary>
         HighAlertSub = 5,
         /// <summary>
-        /// For Maintenance messages: "~ " default prefix
+        /// Maintenance message: "~ " default prefix
         /// </summary>
         Maintenance = 6,
         /// <summary>
-        /// For Maintenance submessages: "~ |" default prefix
+        /// Maintenance submessage: "~ |" default prefix
         /// </summary>
         MaintenanceSub = 7,
     }
@@ -57,67 +57,7 @@ namespace LoggerLib
     /// </summary>
     public static class Logger
     {
-        //TOGGLES AND PATHS======================================================================================
-        /// <summary>
-        /// Default log folder
-        /// </summary>
-        public const string defaultLogFolder = @".\\Logs";
-        /// <summary>
-        /// Log folder
-        /// </summary>
-        public static string LogPath { get; private set; } = "NOT SET";
-        /// <summary>
-        /// Log file
-        /// </summary>
-        public static string LogFilePath { get; private set; }
-
-        /// <summary>
-        /// Is console logging enabled or not
-        /// </summary>
-        private static bool withConsole = false;
-        /// <summary>
-        /// Is log path set or not
-        /// </summary>
-        private static bool isPathSet = false;
-
-
-        //DESIGN=================================================================================================
-        /// <summary>
-        /// Message default prefix dictionary
-        /// <para>
-        /// Can be changed to customize prefixes
-        /// </para>
-        /// </summary>
-        private static Dictionary<MessageType, string> Prefixes { get; }
-        = new Dictionary<MessageType, string>()
-        {
-            { MessageType.General, "" },
-            { MessageType.GeneralSub, " |" },
-            { MessageType.Alert, "!" },
-            { MessageType.AlertSub, "! |" },
-            { MessageType.HighAlert, "!!" },
-            { MessageType.HighAlertSub, "!! |" },
-            { MessageType.Maintenance, "~" },
-            { MessageType.MaintenanceSub, "~ |" },
-        };
-        /// <summary>
-        /// Console output text highlight
-        /// </summary>
-        private static Dictionary<MessageType, ConsoleColor> Highlights { get; }
-        = new Dictionary<MessageType, ConsoleColor>()
-        {
-            { MessageType.General, ConsoleColor.White },
-            { MessageType.GeneralSub, ConsoleColor.White },
-            { MessageType.Alert, ConsoleColor.Yellow },
-            { MessageType.AlertSub, ConsoleColor.Yellow},
-            { MessageType.HighAlert, ConsoleColor.Red },
-            { MessageType.HighAlertSub, ConsoleColor.Red },
-            { MessageType.Maintenance, ConsoleColor.DarkGray },
-            { MessageType.MaintenanceSub, ConsoleColor.DarkGray },
-        };
-
-
-        //INITIALIZATION=========================================================================================
+        #region Initialization
         /// <summary>
         /// Initialization of the logger using default log folder
         /// <para>
@@ -126,6 +66,12 @@ namespace LoggerLib
         /// </summary>
         public static void Initialize()
         {
+            //reset if logger is activated
+            if (isActive)
+            {
+                End();
+            }
+
             //set log output folder
             LogPath = defaultLogFolder;
             isPathSet = true;
@@ -139,6 +85,7 @@ namespace LoggerLib
             Directory.CreateDirectory(LogPath);
 
             LogSetup();
+            isActive = true;
             Begin();
         }
         /// <summary>
@@ -150,6 +97,12 @@ namespace LoggerLib
         /// <param name="enableConsoleLogging">Enable console logging</param>
         public static void Initialize(bool enableConsoleLogging)
         {
+            //reset if logger is activated
+            if (isActive)
+            {
+                End();
+            }
+
             //set log output folder
             LogPath = defaultLogFolder;
             isPathSet = true;
@@ -163,6 +116,7 @@ namespace LoggerLib
             Directory.CreateDirectory(LogPath);
 
             LogSetup();
+            isActive = true;
             Begin();
         }
         /// <summary>
@@ -174,6 +128,12 @@ namespace LoggerLib
         /// <param name="logFolder">Folder to store logs. WARNING: it will be emptied in certain conditions</param>
         public static void Initialize(string logFolder)
         {
+            //reset if logger is activated
+            if (isActive)
+            {
+                End();
+            }
+
             //set log output folder
             LogPath = logFolder;
             isPathSet = true;
@@ -187,6 +147,7 @@ namespace LoggerLib
             Directory.CreateDirectory(LogPath);
 
             LogSetup();
+            isActive = true;
             Begin();
         }
         /// <summary>
@@ -199,6 +160,12 @@ namespace LoggerLib
         /// <param name="enableConsoleLogging">Enable console logging</param>
         public static void Initialize(string logFolder, bool enableConsoleLogging)
         {
+            //reset if logger is activated
+            if (isActive)
+            {
+                End();
+            }
+
             //if console logging is enabled
             if (enableConsoleLogging)
             {
@@ -218,6 +185,7 @@ namespace LoggerLib
             Directory.CreateDirectory(LogPath);
 
             LogSetup();
+            isActive = true;
             Begin();
         }
         /// <summary>
@@ -229,15 +197,13 @@ namespace LoggerLib
         /// <param name="launch_args">Program launch arguments</param>
         public static void Initialize(string[] launch_args)
         {
-            if (launch_args.Length != 0)
+            //reset if logger is activated
+            if (isActive)
             {
-                //if launch argument "-ToHconsole" is provided, enable console logging
-                if (launch_args.Contains(Arguments[ArgumentType.ConsoleLogging]))
-                {
-                    withConsole = true;
-                }
+                End();
             }
 
+            ReadArguments(launch_args);
             //set log output folder
             LogPath = defaultLogFolder;
             isPathSet = true;
@@ -251,6 +217,7 @@ namespace LoggerLib
             Directory.CreateDirectory(LogPath);
 
             LogSetup();
+            isActive = true;
             Begin();
         }
         /// <summary>
@@ -263,15 +230,13 @@ namespace LoggerLib
         /// <param name="launch_args">Program launch arguments</param>
         public static void Initialize(string logFolder, string[] launch_args)
         {
-            //if launch argument "-console" is provided, enable console logging
-            if (launch_args.Length != 0)
+            //reset if logger is activated
+            if (isActive)
             {
-                if (launch_args.Contains("-console"))
-                {
-                    withConsole = true;
-                }
+                End();
             }
 
+            ReadArguments(launch_args);
             //set log output folder
             LogPath = logFolder;
             isPathSet = true;
@@ -285,32 +250,42 @@ namespace LoggerLib
             Directory.CreateDirectory(LogPath);
 
             LogSetup();
+            isActive = true;
             Begin();
         }
+        #endregion
 
 
-
-        //TYPELESS LOGGING=======================================================================================
+        #region Typeless logging
         /// <summary>
         /// Log a single General message
         /// </summary>
         /// <param name="message">Message</param>
         public static void Log(string message)
         {
-            if (isPathSet == false)
+            if (isPathSet)
             {
-                throw new ArgumentException("Log path is not set. Have you used Initialize?");
-            }
-
-            message = $"{Timestamp()} {Prefixes[MessageType.General]}{message}";
-            using (StreamWriter sw = File.AppendText(LogFilePath))
-            {
-                sw.WriteLine(message);
-                if (withConsole)
+                try
                 {
-                    Console.ForegroundColor = Highlights[MessageType.General];
-                    Console.WriteLine(message);
+                    message = $"{Timestamp()} {Prefixes[MessageType.General]}{message}";
+                    using (StreamWriter sw = File.AppendText(LogFilePath))
+                    {
+                        sw.WriteLine(message);
+                        if (withConsole)
+                        {
+                            Console.ForegroundColor = Highlights[MessageType.General];
+                            Console.WriteLine(message);
+                        }
+                    }
                 }
+                catch (AccessViolationException)
+                {
+                    DispatchError(ErrorType.PathNotAccessible);
+                }
+            }
+            else
+            {
+                DispatchError(ErrorType.PathNotSet);
             }
         }
         /// <summary>
@@ -319,28 +294,38 @@ namespace LoggerLib
         /// <param name="messages">Messages</param>
         public static void Log(string[] messages)
         {
-            if (isPathSet == false)
+            if (isPathSet)
             {
-                throw new ArgumentException("Log path is not set. Have you used Initialize?");
-            }
-
-            int count = messages.Count();
-            for ( int i = 0; i < count; i++ )
-            {
-                messages[i] = $"{Timestamp()} {Prefixes[MessageType.General]}{messages[i]}";
-            }
-
-            File.AppendAllLines(LogFilePath, messages);
-            if (withConsole)
-            {
-                Console.ForegroundColor = Highlights[MessageType.General];
-                foreach (string message in messages)
+                try
                 {
-                    Console.WriteLine(message);
+                    int count = messages.Count();
+                    for (int i = 0; i < count; i++)
+                    {
+                        messages[i] = $"{Timestamp()} {Prefixes[MessageType.General]}{messages[i]}";
+                    }
+
+                    File.AppendAllLines(LogFilePath, messages);
+                    if (withConsole)
+                    {
+                        Console.ForegroundColor = Highlights[MessageType.General];
+                        foreach (string message in messages)
+                        {
+                            Console.WriteLine(message);
+                        }
+                    }
+                }
+                catch (AccessViolationException)
+                {
+                    DispatchError(ErrorType.PathNotAccessible);
                 }
             }
+            else
+            {
+                DispatchError(ErrorType.PathNotSet);
+            }
         }
-
+        #endregion
+        #region Typed logging
         //TYPED LOGGING==========================================================================================
         /// <summary>
         /// Log message with a specified type
@@ -349,21 +334,29 @@ namespace LoggerLib
         /// <param name="message">Message</param>
         public static void Log(MessageType messageType, string message)
         {
-            if (isPathSet == false)
+            if (isPathSet)
             {
-                throw new ArgumentException("Log path is not set. Have you used Initialize?");
-            }
-
-            message = $"{Timestamp()} {Prefixes[messageType]}{message}";
-
-            using (StreamWriter sw = File.AppendText(LogFilePath))
-            {
-                sw.WriteLine(message);
-                if (withConsole)
+                try
                 {
-                    Console.ForegroundColor = Highlights[messageType];
-                    Console.WriteLine(message);
+                    message = $"{Timestamp()} {Prefixes[messageType]}{message}";
+                    using (StreamWriter sw = File.AppendText(LogFilePath))
+                    {
+                        sw.WriteLine(message);
+                        if (withConsole)
+                        {
+                            Console.ForegroundColor = Highlights[messageType];
+                            Console.WriteLine(message);
+                        }
+                    }
                 }
+                catch (AccessViolationException)
+                {
+                    DispatchError(ErrorType.PathNotAccessible);
+                }
+            }
+            else
+            {
+                DispatchError(ErrorType.PathNotSet);
             }
         }
         /// <summary>
@@ -373,24 +366,33 @@ namespace LoggerLib
         /// <param name="messages">Messages</param>
         public static void Log(MessageType messageType, string[] messages)
         {
-            if (isPathSet == false)
+            if (isPathSet)
             {
-                throw new ArgumentException("Log path is not set. Have you used Initialize?");
-            }
-
-            for (int i = 0; i < messages.Length; i++)
-            {
-                messages[i] = $"{Timestamp()} {Prefixes[messageType]}{messages[i]}";
-            }
-            File.AppendAllLines(LogFilePath, messages);
-
-            if (withConsole)
-            {
-                Console.ForegroundColor = Highlights[messageType];
-                foreach (string message in messages)
+                try
                 {
-                    Console.WriteLine(message);
+                    for (int i = 0; i < messages.Length; i++)
+                    {
+                        messages[i] = $"{Timestamp()} {Prefixes[messageType]}{messages[i]}";
+                    }
+                    File.AppendAllLines(LogFilePath, messages);
+
+                    if (withConsole)
+                    {
+                        Console.ForegroundColor = Highlights[messageType];
+                        foreach (string message in messages)
+                        {
+                            Console.WriteLine(message);
+                        }
+                    }
                 }
+                catch (AccessViolationException)
+                {
+                    DispatchError(ErrorType.PathNotAccessible);
+                }
+            }
+            else
+            {
+                DispatchError(ErrorType.PathNotSet);
             }
         }
         /// <summary>
@@ -404,52 +406,61 @@ namespace LoggerLib
         /// <param name="messages">Messages</param>
         public static void Log(MessageType[] messageTypes, string[] messages)
         {
-            if (isPathSet == false)
+            if (isPathSet)
             {
-                throw new ArgumentException("Log path is not set. Have you used Initialize?");
-            }
-
-            
-            int i;
-
-            if (withConsole)
-            {
-                for (i = 0; i < messageTypes.Length; i++)
+                try
                 {
-                    messages[i] = $"{Timestamp()} {Prefixes[messageTypes[i]]}{messages[i]}";
-                    Console.ForegroundColor = Highlights[messageTypes[i]];
-                    Console.WriteLine(messages[i]);
-                }
-                if (messageTypes.Count() < messages.Count())
-                {
-                    int last = i;
-                    for (i = last; i < messages.Count(); i++)
+                    int i;
+
+                    if (withConsole)
                     {
-                        messages[i] = $"{Timestamp()} {Prefixes[messageTypes[last - 1]]}{messages[i]}";
+                        for (i = 0; i < messageTypes.Length; i++)
+                        {
+                            messages[i] = $"{Timestamp()} {Prefixes[messageTypes[i]]}{messages[i]}";
+                            Console.ForegroundColor = Highlights[messageTypes[i]];
+                            Console.WriteLine(messages[i]);
+                        }
+                        if (messageTypes.Count() < messages.Count())
+                        {
+                            int last = i;
+                            for (i = last; i < messages.Count(); i++)
+                            {
+                                messages[i] = $"{Timestamp()} {Prefixes[messageTypes[last - 1]]}{messages[i]}";
 
-                        Console.WriteLine(messages[i]);
+                                Console.WriteLine(messages[i]);
+                            }
+                        }
                     }
+                    else
+                    {
+                        for (i = 0; i < messageTypes.Length; i++)
+                        {
+                            messages[i] = $"{Timestamp()} {Prefixes[messageTypes[i]]}{messages[i]}";
+                        }
+                        if (messageTypes.Count() < messages.Count())
+                        {
+                            int last = i;
+                            for (i = last; i < messages.Count(); i++)
+                            {
+                                messages[i] = $"{Timestamp()} {Prefixes[messageTypes[last - 1]]}{messages[i]}";
+                            }
+                        }
+                    }
+
+                    File.AppendAllLines(LogFilePath, messages);
+                }
+                catch (AccessViolationException)
+                {
+                    DispatchError(ErrorType.PathNotAccessible);
                 }
             }
             else
             {
-                for (i = 0; i < messageTypes.Length; i++)
-                {
-                    messages[i] = $"{Timestamp()} {Prefixes[messageTypes[i]]}{messages[i]}";
-                }
-                if (messageTypes.Count() < messages.Count())
-                {
-                    int last = i;
-                    for (i = last; i < messages.Count(); i++)
-                    {
-                        messages[i] = $"{Timestamp()} {Prefixes[messageTypes[last - 1]]}{messages[i]}";
-                    }
-                }
+                DispatchError(ErrorType.PathNotSet);
             }
-
-            File.AppendAllLines(LogFilePath, messages);
         }
-
+        #endregion
+        #region Queued logging
         //QUEUED LOGGING=========================================================================================
         /// <summary>
         /// Add General message to the log queue
@@ -457,18 +468,21 @@ namespace LoggerLib
         /// <param name="message">Message</param>
         public static void QueueAdd(string message)
         {
-            if (isPathSet == false)
+            if (isPathSet)
             {
-                throw new ArgumentException("Log path is not set. Have you used Initialize?");
+                message = $"{Timestamp()} {Prefixes[MessageType.General]}{message}";
+                queue.Add(message);
+                if (withConsole)
+                {
+                    Console.ForegroundColor = Highlights[MessageType.General];
+                    Console.WriteLine(message);
+                }
+            }
+            else
+            {
+                DispatchError(ErrorType.PathNotSet);
             }
 
-            message = $"{Timestamp()} {Prefixes[MessageType.General]}{message}";
-            queue.Add(message);
-            if (withConsole)
-            {
-                Console.ForegroundColor = Highlights[MessageType.General];
-                Console.WriteLine(message);
-            }
         }
         /// <summary>
         /// Add message with a specified type to the log queue
@@ -477,53 +491,276 @@ namespace LoggerLib
         /// <param name="message">Message</param>
         public static void QueueAdd(MessageType messageType, string message)
         {
-            if (isPathSet == false)
+            if (isPathSet)
             {
-                throw new ArgumentException("Log path is not set. Have you used Initialize?");
+                message = $"{Timestamp()} {Prefixes[messageType]}{message}";
+                queue.Add(message);
+
+                if (withConsole)
+                {
+                    Console.ForegroundColor = Highlights[messageType];
+                    Console.WriteLine(message);
+                }
             }
-
-            message = $"{Timestamp()} {Prefixes[messageType]}{message}";
-            queue.Add(message);
-
-            if (withConsole)
+            else
             {
-                Console.ForegroundColor = Highlights[messageType];
-                Console.WriteLine(message);
+                DispatchError(ErrorType.PathNotSet);
             }
-
         }
         /// <summary>
         /// Logs queued messages and clears queue
         /// </summary>
         public static void QueueExecute()
         {
-            File.AppendAllLines(LogFilePath, queue);
-            if (withConsole)
+            if (isPathSet)
             {
-                foreach (string message in queue)
+                try
                 {
-                    Console.WriteLine(message);
+                    File.AppendAllLines(LogFilePath, queue);
+                    if (withConsole)
+                    {
+                        foreach (string message in queue)
+                        {
+                            Console.WriteLine(message);
+                        }
+                    }
+                    queue.Clear();
+                }
+                catch (AccessViolationException)
+                {
+                    DispatchError(ErrorType.PathNotAccessible);
                 }
             }
-            queue.Clear();
+            else
+            {
+                DispatchError(ErrorType.PathNotSet);
+            }
         }
 
+        /// <summary>
+        /// Message queue
+        /// </summary>
+        private static List<string> queue = new List<string>();
+        #endregion
 
+        #region Exception logging
+        //EXCEPTION LOGGING==========================================================================================
+        /// <summary>
+        /// Logs and exception and then throws it. To be used in <see langword="catch"/> block
+        /// </summary>
+        /// <typeparam name="T">Type of exception</typeparam>
+        /// <param name="ex">Exception that has to be thrown</param>
+        /// <param name="logTrace">Whether to log stack</param>
+        public static void LogAndThrow<T>(T ex, bool logTrace) where T : Exception
+        {
+            ErrorCount++;
+            DividerDashedLine(ConsoleColor.Red);
+            Log(MessageType.HighAlert, $"{ex.GetType().Name} occured in {ex.TargetSite.DeclaringType.FullName}");
+            if (logTrace)
+            {
+                Log(MessageType.HighAlertSub, "Call stack:");
+                Console.ForegroundColor = ConsoleColor.White;
+                Log(ex.StackTrace);
+            }
+            DividerDashedLine(ConsoleColor.Red);
+            throw ex;
+        }
 
+        /// <summary>
+        /// Runs dangerous piece of code inside a <see langword="try"/>/<see langword="catch"/> and logs exception.
+        /// </summary>
+        /// <typeparam name="T">Dangerous function Return type</typeparam>
+        /// <param name="dangerousCode">Code that can throw an exception</param>
+        /// <param name="logTrace">Whether to log stack</param>
+        /// <returns></returns>
+        public static T Try<T>(Func<T> dangerousCode, bool logTrace)
+        {
+            try
+            {
+                return dangerousCode.Invoke();
+            }
+            catch (Exception ex)
+            {
+                ErrorCount++;
+                DividerDashedLine(ConsoleColor.Red);
+                Log(MessageType.HighAlert, $"{ex.GetType().Name} occured in {ex.TargetSite.DeclaringType.FullName}");
+                if (logTrace)
+                {
+                    Log(MessageType.HighAlertSub, "Call stack:");
+                    Console.ForegroundColor = ConsoleColor.White;
+                    Log(ex.StackTrace);
+                }
+                DividerDashedLine(ConsoleColor.Red);
+                throw ex;
+            }
+        }
+        /// <summary>
+        /// Runs dangerous piece of code inside a <see langword="try"/>/<see langword="catch"/> and logs exception.
+        /// </summary>
+        /// <param name="dangerousCode">Code that can throw an exception</param>
+        /// <param name="logTrace">Whether to log stack</param>
+        /// <returns></returns>
+        public static void Try(Action dangerousCode, bool logTrace)
+        {
+            try
+            {
+                dangerousCode.Invoke();
+            }
+            catch (Exception ex)
+            {
+                ErrorCount++;
+                DividerDashedLine(ConsoleColor.Red);
+                Log(MessageType.HighAlert, $"{ex.GetType().Name} occured in {ex.TargetSite.DeclaringType.FullName}");
+                if (logTrace)
+                {
+                    Log(MessageType.HighAlertSub, "Call stack:");
+                    Console.ForegroundColor = ConsoleColor.White;
+                    Log(ex.StackTrace);
+                }
+                DividerDashedLine(ConsoleColor.Red);
+                throw ex;
+            }
+        }
+        /// <summary>
+        /// Runs dangerous piece of code inside a <see langword="try"/>/<see langword="catch"/> and logs exception.
+        /// </summary>
+        /// <typeparam name="T">Dangerous function Return type</typeparam>
+        /// <param name="dangerousCode">Code that can throw an exception</param>
+        /// <param name="logTrace">Whether to log stack</param>
+        /// <returns></returns>
+        public static T Try<T>(Func<T> dangerousCode)
+        {
+            try
+            {
+                return dangerousCode.Invoke();
+            }
+            catch (Exception ex)
+            {
+                ErrorCount++;
+                DividerDashedLine(ConsoleColor.Red);
+                Log(MessageType.HighAlert, $"{ex.GetType().Name} occured in {ex.TargetSite.DeclaringType.FullName}");
+                DividerDashedLine(ConsoleColor.Red);
+                throw ex;
+            }
+        }
+        /// <summary>
+        /// Runs dangerous piece of code inside a <see langword="try"/>/<see langword="catch"/> and logs exception.
+        /// </summary>
+        /// <param name="dangerousCode">Code that can throw an exception</param>
+        /// <param name="logTrace">Whether to log stack</param>
+        /// <returns></returns>
+        public static void Try(Action dangerousCode)
+        {
+            try
+            {
+                dangerousCode.Invoke();
+            }
+            catch (Exception ex)
+            {
+                ErrorCount++;
+                DividerDashedLine(ConsoleColor.Red);
+                Log(MessageType.HighAlert, $"{ex.GetType().Name} occured in {ex.TargetSite.DeclaringType.FullName}");
+                DividerDashedLine(ConsoleColor.Red);
+                throw ex;
+            }
+        }
+
+        /// <summary>
+        /// Runs dangerous piece of code inside a <see langword="try"/>/<see langword="catch"/> and logs exception.
+        /// </summary>
+        /// <typeparam name="T">Dangerous function Return type</typeparam>
+        /// <param name="tryFunc">Code that can throw an exception</param>
+        /// <param name="catchFunc">Catch Func code</param>
+        /// <param name="logTrace">Whether to log stack</param>
+        /// <returns></returns>
+        public static T TryAndCatch<T>(Func<T> tryFunc, Func<T> catchFunc, bool logTrace)
+        {
+            try
+            {
+                return tryFunc.Invoke();
+            }
+            catch (Exception ex)
+            {
+                ErrorCount++;
+                DividerDashedLine(ConsoleColor.Red);
+                Log(MessageType.HighAlert, $"{ex.GetType().Name} occured in {ex.TargetSite.DeclaringType.FullName}");
+                if (logTrace)
+                {
+                    Log(MessageType.HighAlertSub, "Call stack:");
+                    Console.ForegroundColor = ConsoleColor.White;
+                    Log(ex.StackTrace);
+                }
+                DividerDashedLine(ConsoleColor.Red);
+
+                Log(MessageType.HighAlertSub, "Executing reaction...");
+                Console.ResetColor();
+                return catchFunc.Invoke();
+                //throw ex;
+            }
+        }
+        /// <summary>
+        /// Runs dangerous piece of code inside a <see langword="try"/>/<see langword="catch"/> and logs exception.
+        /// </summary>
+        /// <param name="dangerousCode">Code that can throw an exception</param>
+        /// <param name="catchAct">Catch Action code</param>
+        /// <param name="logTrace">Whether to log stack</param>
+        /// <returns></returns>
+        public static void TryAndCatch(Action dangerousCode, Action catchAct, bool logTrace)
+        {
+            try
+            {
+                dangerousCode.Invoke();
+            }
+            catch (Exception ex)
+            {
+                ErrorCount++;
+                DividerDashedLine(ConsoleColor.Red);
+                Log(MessageType.HighAlert, $"{ex.GetType().Name} occured in {ex.TargetSite.DeclaringType.FullName}");
+                if (logTrace)
+                {
+                    Log(MessageType.HighAlertSub, "Call stack:");
+                    Console.ForegroundColor = ConsoleColor.White;
+                    Log(ex.StackTrace);
+                }
+                DividerDashedLine(ConsoleColor.Red);
+
+                Log(MessageType.HighAlertSub, "Executing reaction...");
+                Console.ResetColor();
+                catchAct.Invoke();
+                //throw ex;
+            }
+        }
+
+        #endregion
+        #region Dividers
         //DIVIDERS===============================================================================================
         /// <summary>
         /// Adds an empty line to the log
         /// </summary>
         public static void Divider()
         {
-            using (StreamWriter sw = File.AppendText(LogFilePath))
+            if (isPathSet)
             {
-                sw.WriteLine();
-                if (withConsole)
+                try
                 {
-                    Console.ResetColor();
-                    Console.WriteLine();
+                    using (StreamWriter sw = File.AppendText(LogFilePath))
+                    {
+                        sw.WriteLine();
+                        if (withConsole)
+                        {
+                            Console.ResetColor();
+                            Console.WriteLine();
+                        }
+                    }
                 }
+                catch (AccessViolationException)
+                {
+                    DispatchError(ErrorType.PathNotAccessible);
+                }
+            }
+            else
+            {
+                DispatchError(ErrorType.PathNotSet);
             }
         }
         /// <summary>
@@ -531,19 +768,211 @@ namespace LoggerLib
         /// </summary>
         public static void DividerDashedLine()
         {
-            using (StreamWriter sw = File.AppendText(LogFilePath))
+            if (isPathSet)
             {
-                sw.WriteLine("----------------------------------------------");
-                if (withConsole)
+                try
                 {
-                    Console.ResetColor();
-                    Console.WriteLine("----------------------------------------------");
+                    using (StreamWriter sw = File.AppendText(LogFilePath))
+                    {
+                        sw.WriteLine("----------------------------------------------");
+                        if (withConsole)
+                        {
+                            Console.ResetColor();
+                            Console.WriteLine("----------------------------------------------");
+                        }
+                    }
+                }
+                catch (AccessViolationException)
+                {
+                    DispatchError(ErrorType.PathNotAccessible);
+                }
+            }
+        }
+        /// <summary>
+        /// Adds a division line to the log
+        /// </summary>
+        /// <param name="color">Line color in console</param>
+        public static void DividerDashedLine(ConsoleColor color)
+        {
+            Console.ForegroundColor = color;
+            if (isPathSet)
+            {
+                try
+                {
+                    using (StreamWriter sw = File.AppendText(LogFilePath))
+                    {
+                        sw.WriteLine("----------------------------------------------");
+                        if (withConsole)
+                        {
+                            Console.WriteLine("----------------------------------------------");
+                            Console.ResetColor();
+                        }
+                    }
+                }
+                catch (AccessViolationException)
+                {
+                    DispatchError(ErrorType.PathNotAccessible);
+                }
+            }
+        }
+        #endregion
+
+
+        #region States and paths
+        /// <summary>
+        /// Default log folder
+        /// </summary>
+        private const string defaultLogFolder = @".\\Logs";
+        /// <summary>
+        /// Log folder
+        /// </summary>
+        public static string LogPath { get; private set; } = "NOT SET";
+        /// <summary>
+        /// Log file
+        /// </summary>
+        public static string LogFilePath { get; private set; } = "NOT SET";
+
+        /// <summary>
+        /// Is log path set or not
+        /// </summary>
+        private static bool isPathSet = false;
+
+        /// <summary>
+        /// Is console logging enabled or not
+        /// </summary>
+        private static bool withConsole = false;
+        /// <summary>
+        /// Should library throw error or relay it to the event
+        /// </summary>
+        private static bool throwError = false;
+        /// <summary>
+        /// Is logger activated or not
+        /// </summary>
+        private static bool isActive = false;
+        #endregion
+        #region Events
+        //EVENTS=================================================================================================
+        /// <summary>
+        /// Delegate for logger errors
+        /// </summary>
+        /// <param name="errorType">Type of the error</param>
+        /// <param name="errorMessage">Error message</param>
+        public delegate void LogError(ErrorType errorType, string errorMessage);
+        /// <summary>
+        /// Invoked on logger error, use to relay error information to your error handler
+        /// </summary>
+        public static event LogError OnLogError;
+        #endregion
+        #region Enums
+        //ENUMS==================================================================================================
+        /// <summary>
+        /// Types of console arguments
+        /// </summary>
+        internal enum ArgumentType
+        {
+            /// <summary>
+            /// Console logging
+            /// </summary>
+            ConsoleLogging = 0,
+            /// <summary>
+            /// Should library throw error or relay it
+            /// </summary>
+            ThrowError = 1,
+        }
+        /// <summary>
+        /// Logger error types
+        /// </summary>
+        public enum ErrorType
+        {
+            /// <summary>
+            /// Log directory path is not set
+            /// </summary>
+            PathNotSet = 0,
+            /// <summary>
+            /// Log directory is not accessible
+            /// </summary>
+            PathNotAccessible = 1,
+        }
+        #endregion
+        #region Dictionaries
+        //DICTIONARIES===========================================================================================
+        /// <summary>
+        /// Message default prefix dictionary
+        /// <para>
+        /// Can be changed to customize prefixes
+        /// </para>
+        /// </summary>
+        internal static readonly Dictionary<MessageType, string> Prefixes
+            = new Dictionary<MessageType, string>()
+            {
+                { MessageType.General, "" },
+                { MessageType.GeneralSub, " |" },
+                { MessageType.Alert, "!" },
+                { MessageType.AlertSub, "! |" },
+                { MessageType.HighAlert, "!!" },
+                { MessageType.HighAlertSub, "!! |" },
+                { MessageType.Maintenance, "~" },
+                { MessageType.MaintenanceSub, "~ |" },
+            };
+        /// <summary>
+        /// Console output text highlight
+        /// </summary>
+        internal static readonly Dictionary<MessageType, ConsoleColor> Highlights
+            = new Dictionary<MessageType, ConsoleColor>()
+            {
+                { MessageType.General, ConsoleColor.White },
+                { MessageType.GeneralSub, ConsoleColor.White },
+                { MessageType.Alert, ConsoleColor.Yellow },
+                { MessageType.AlertSub, ConsoleColor.Yellow},
+                { MessageType.HighAlert, ConsoleColor.Red },
+                { MessageType.HighAlertSub, ConsoleColor.Red },
+                { MessageType.Maintenance, ConsoleColor.DarkGray },
+                { MessageType.MaintenanceSub, ConsoleColor.DarkGray },
+            };
+
+        /// <summary>
+        /// Console arguments
+        /// </summary>
+        internal static readonly Dictionary<ArgumentType, string> Arguments
+            = new Dictionary<ArgumentType, string>()
+            {
+                { ArgumentType.ConsoleLogging, "-ToHconsole" },
+                { ArgumentType.ThrowError, "-ToHerror" },
+            };
+
+        /// <summary>
+        /// Error messages
+        /// </summary>
+        internal static readonly Dictionary<ErrorType, string> ErrorMessages
+            = new Dictionary<ErrorType, string>()
+            {
+                { ErrorType.PathNotSet, "Log path is not set. Have you used Initialize?" },
+                { ErrorType.PathNotAccessible, "Cannot access log directory." },
+            };
+        #endregion
+        #region Miscellanious
+        //MISCELLANEOUS==========================================================================================
+        /// <summary>
+        /// Reads launch arguments and enables required parametres
+        /// </summary>
+        /// <param name="launch_args"></param>
+        private static void ReadArguments(string[] launch_args)
+        {
+            if (launch_args.Length != 0)
+            {
+                //if launch argument for console logging is provided, enable console logging
+                if (launch_args.Contains(Arguments[ArgumentType.ConsoleLogging]))
+                {
+                    withConsole = true;
+                }
+                //if launch argument for throwing error is provided, library will throw errors instead of relaying
+                if (launch_args.Contains(Arguments[ArgumentType.ThrowError]))
+                {
+                    throwError = true;
                 }
             }
         }
 
-
-        //MISCELLANEOUS==========================================================================================
         /// <summary>
         /// Rename old logs, create new log file
         /// </summary>
@@ -551,66 +980,74 @@ namespace LoggerLib
         {
             if (LogPath == "NOT SET")
             {
-                throw new ArgumentException("Log path is not set. Have you Initialized Logger?");
+                DispatchError(ErrorType.PathNotSet);
             }
 
-            //get all filenames containing "log"
-            string[] files = Directory.GetFiles(LogPath).Where<string>(file => file.Contains("log")).ToArray();
-            //file rotation controller
-            switch (files.Length)
+            try
             {
-                case 0: break;
-                case 1:
-                    {
-                        if (File.Exists($"{LogPath}\\log.txt"))
+                //get all filenames containing "log"
+                string[] files = Directory.GetFiles(LogPath)
+                    .Where<string>(file => file.Contains("log")).ToArray();
+                //file rotation controller
+                switch (files.Length)
+                {
+                    case 0: break;
+                    case 1:
                         {
-                            //rename log.txt to log1.txt
-                            File.Move($"{LogPath}\\log.txt", $"{LogPath}\\log1.txt");
-                        }
-                        else
-                        {
-                            //clears the directory
-                            foreach (string file in files)
+                            if (File.Exists($"{LogPath}\\log.txt"))
                             {
-                                File.Delete(file);
+                                //rename log.txt to log1.txt
+                                File.Move($"{LogPath}\\log.txt", $"{LogPath}\\log1.txt");
                             }
-                        }
-                        break;
-                    }
-                case 2:
-                    {
-                        if (File.Exists($"{LogPath}\\log.txt") && File.Exists($"{LogPath}\\log1.txt"))
-                        {
-                            File.Move($"{LogPath}\\log1.txt", $"{LogPath}\\log2.txt");
-                            File.Move($"{LogPath}\\log.txt", $"{LogPath}\\log1.txt");
-                        }
-                        else
-                        {
-                            foreach (string file in files)
+                            else
                             {
-                                File.Delete(file);
+                                //clears the directory
+                                foreach (string file in files)
+                                {
+                                    File.Delete(file);
+                                }
                             }
+                            break;
                         }
-                        break;
-                    }
-                case 3:
-                    {
-                        if (File.Exists($"{LogPath}\\log.txt") && File.Exists($"{LogPath}\\log1.txt") && File.Exists($"{LogPath}\\log2.txt"))
+                    case 2:
                         {
-                            //delete the oldest log
-                            File.Delete($"{LogPath}\\log2.txt");
-                            File.Move($"{LogPath}\\log1.txt", $"{LogPath}\\log2.txt");
-                            File.Move($"{LogPath}\\log.txt", $"{LogPath}\\log1.txt");
-                        }
-                        else
-                        {
-                            foreach (string file in files)
+                            if (File.Exists($"{LogPath}\\log.txt") && File.Exists($"{LogPath}\\log1.txt"))
                             {
-                                File.Delete(file);
+                                File.Move($"{LogPath}\\log1.txt", $"{LogPath}\\log2.txt");
+                                File.Move($"{LogPath}\\log.txt", $"{LogPath}\\log1.txt");
                             }
+                            else
+                            {
+                                foreach (string file in files)
+                                {
+                                    File.Delete(file);
+                                }
+                            }
+                            break;
                         }
-                        break;
-                    }
+                    case 3:
+                        {
+                            if (File.Exists($"{LogPath}\\log.txt") && File.Exists($"{LogPath}\\log1.txt") && File.Exists($"{LogPath}\\log2.txt"))
+                            {
+                                //delete the oldest log
+                                File.Delete($"{LogPath}\\log2.txt");
+                                File.Move($"{LogPath}\\log1.txt", $"{LogPath}\\log2.txt");
+                                File.Move($"{LogPath}\\log.txt", $"{LogPath}\\log1.txt");
+                            }
+                            else
+                            {
+                                foreach (string file in files)
+                                {
+                                    File.Delete(file);
+                                }
+                            }
+                            break;
+                        }
+                }
+            }
+            catch (AccessViolationException)
+            {
+                DispatchError(ErrorType.PathNotAccessible);
             }
         }
         /// <summary>
@@ -621,8 +1058,10 @@ namespace LoggerLib
             Console.ResetColor();
             queue.Clear();
             LogPath = "NOT SET";
-            LogFilePath = null;
+            LogFilePath = "NOT SET";
+            isPathSet = false;
             withConsole = false;
+            ErrorCount = 0;
         }
         /// <summary>
         /// Creates a log header
@@ -671,14 +1110,28 @@ namespace LoggerLib
         public static void End()
         {
             DividerDashedLine();
+            string[] footer;
 
             //footer messages
-            string[] footer = new string[]
+            if (ErrorCount > 0)
             {
+                footer = new string[]
+                {
+                $"{Prefixes[MessageType.Maintenance]}Log write complete",
+                $"{Prefixes[MessageType.MaintenanceSub]}Errors encountered: {ErrorCount}",
+                $"{Prefixes[MessageType.MaintenanceSub]}Log path: {LogFilePath}",
+                $"{Prefixes[MessageType.MaintenanceSub]}{DateTime.UtcNow.ToString(new CultureInfo("en-GB"))}"
+                };
+            }
+            else
+            {
+                footer = new string[]
+                {
                 $"{Prefixes[MessageType.Maintenance]}Log write complete",
                 $"{Prefixes[MessageType.MaintenanceSub]}Log path: {LogFilePath}",
                 $"{Prefixes[MessageType.MaintenanceSub]}{DateTime.UtcNow.ToString(new CultureInfo("en-GB"))}"
-            };
+                };
+            }
             File.AppendAllLines(LogFilePath, footer);
 
             //print to console with the proper highlight
@@ -711,27 +1164,35 @@ namespace LoggerLib
         }
 
         /// <summary>
-        /// Message queue
+        /// Invokes onLogError or throws exception if throwError is enabled
         /// </summary>
-        private static List<string> queue = new List<string>();
-
-        /// <summary>
-        /// Types of console arguments
-        /// </summary>
-        private enum ArgumentType
+        /// <param name="errorType"></param>
+        private static void DispatchError(ErrorType errorType)
         {
-            /// <summary>
-            /// Console logging
-            /// </summary>
-            ConsoleLogging = 0,
+            if (throwError)
+            {
+                switch (errorType)
+                {
+                    case ErrorType.PathNotSet:
+                        {
+                            throw new ArgumentException(ErrorMessages[ErrorType.PathNotSet]);
+                        }
+                    case ErrorType.PathNotAccessible:
+                        {
+                            throw new AccessViolationException(ErrorMessages[ErrorType.PathNotAccessible]);
+                        }
+                    default: break;
+                }
+            }
+            OnLogError?.Invoke(errorType, ErrorMessages[errorType]);
         }
+        #endregion
+        #region Stats
+        //STATS==================================================================================================
         /// <summary>
-        /// Console arguments
+        /// Number of logged errors 
         /// </summary>
-        private static Dictionary<ArgumentType, string> Arguments { get; }
-        = new Dictionary<ArgumentType, string>()
-        {
-            { ArgumentType.ConsoleLogging, "-ToHconsole" },
-        };
+        public static int ErrorCount { get; private set; } = 0;
+        #endregion
     }
 }
