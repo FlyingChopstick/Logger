@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace LoggerLib
 {
@@ -255,6 +256,77 @@ namespace LoggerLib
         }
         #endregion
 
+        #region Async logging
+        /// <summary>
+        /// Log a single General message
+        /// </summary>
+        /// <param name="message">Message</param>
+        public static async Task<int> LogAsync(string message)
+        {
+            if (isPathSet)
+            {
+                //Console.WriteLine(await AsyncWriter(message).ConfigureAwait(true));
+                //await AsyncWriter(message);//.ConfigureAwait(true);
+                try
+                {
+                    string modifiedMessage = $"{Timestamp()} {Prefixes[MessageType.General]}{message}";
+                    using (StreamWriter sw = File.AppendText(LogFilePath))
+                    {
+                        await Task.Run(() => sw.WriteLine(modifiedMessage));
+                        if (withConsole)
+                        {
+                            Console.ForegroundColor = Highlights[MessageType.General];
+                            Console.WriteLine(modifiedMessage);
+                        }
+                    }
+                    return WRITE_SUCCESS;
+                }
+                catch (AccessViolationException)
+                {
+                    DispatchError(ErrorType.PathNotAccessible);
+                    return WRITE_ERROR_PATH_ACCESS;
+                }
+                catch (Exception)
+                {
+                    //recursivelly retry logging
+                    return await AsyncWriter(message);
+                }
+            }
+            else
+            {
+                DispatchError(ErrorType.PathNotSet);
+                return WRITE_ERROR_PATH_NOTSET;
+            }
+        }
+
+        public static async Task<int> AsyncWriter(string message)
+        {
+            try
+            {
+                string modifiedMessage = $"{Timestamp()} {Prefixes[MessageType.General]}{message}";
+                using (StreamWriter sw = File.AppendText(LogFilePath))
+                {
+                    await Task.Run(() => sw.WriteLine(modifiedMessage));
+                    if (withConsole)
+                    {
+                        Console.ForegroundColor = Highlights[MessageType.General];
+                        Console.WriteLine(modifiedMessage);
+                    }
+                }
+                return WRITE_SUCCESS;
+            }
+            catch (AccessViolationException)
+            {
+                DispatchError(ErrorType.PathNotAccessible);
+                return WRITE_ERROR_PATH_ACCESS;
+            }
+            catch (Exception)
+            {
+                //recursivelly retry logging
+                return await AsyncWriter(message);//, attempt);
+            }
+        }
+        #endregion
 
         #region Typeless logging
         /// <summary>
@@ -892,6 +964,7 @@ namespace LoggerLib
             /// Log directory is not accessible
             /// </summary>
             PathNotAccessible = 1,
+            WriteError = 2,
         }
         #endregion
         #region Dictionaries
@@ -948,6 +1021,7 @@ namespace LoggerLib
             {
                 { ErrorType.PathNotSet, "Log path is not set. Have you used Initialize?" },
                 { ErrorType.PathNotAccessible, "Cannot access log directory." },
+                { ErrorType.WriteError, "Could not write the message"},
             };
         #endregion
         #region Miscellanious
@@ -1068,7 +1142,7 @@ namespace LoggerLib
         /// </summary>
         private static void Begin()
         {
-            DividerDashedLine();
+            //DividerDashedLine();
 
             //header messages
             string[] header = new string[]
@@ -1096,7 +1170,7 @@ namespace LoggerLib
                 }
             }
 
-            DividerDashedLine();
+            //DividerDashedLine();
         }
         /// <summary>
         /// Creates a log footer and resets Logger data
@@ -1109,7 +1183,7 @@ namespace LoggerLib
         /// </summary>
         public static void End()
         {
-            DividerDashedLine();
+            //DividerDashedLine();
             string[] footer;
 
             //footer messages
@@ -1150,7 +1224,7 @@ namespace LoggerLib
                 }
             }
 
-            DividerDashedLine();
+            //DividerDashedLine();
 
             Reset();
         }
@@ -1193,6 +1267,13 @@ namespace LoggerLib
         /// Number of logged errors 
         /// </summary>
         public static int ErrorCount { get; private set; } = 0;
+        #endregion
+
+        #region Return codes
+        internal const int WRITE_SUCCESS = 200;
+        internal const int WRITE_ERROR_PATH_NOTSET = 500;
+        internal const int WRITE_ERROR_PATH_ACCESS = 510;
+        internal const int WRITE_ERROR_ASYNC_EXCEED = 520;
         #endregion
     }
 }
