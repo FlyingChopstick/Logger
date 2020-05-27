@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Linq.Expressions;
 
 namespace LoggerLib
 {
@@ -59,7 +57,7 @@ namespace LoggerLib
     /// </summary>
     public static class Logger
     {
-        //INITIALIZATION=========================================================================================
+        #region Initialization
         /// <summary>
         /// Initialization of the logger using default log folder
         /// <para>
@@ -68,6 +66,12 @@ namespace LoggerLib
         /// </summary>
         public static void Initialize()
         {
+            //reset if logger is activated
+            if (isActive)
+            {
+                End();
+            }
+
             //set log output folder
             LogPath = defaultLogFolder;
             isPathSet = true;
@@ -81,6 +85,7 @@ namespace LoggerLib
             Directory.CreateDirectory(LogPath);
 
             LogSetup();
+            isActive = true;
             Begin();
         }
         /// <summary>
@@ -92,6 +97,12 @@ namespace LoggerLib
         /// <param name="enableConsoleLogging">Enable console logging</param>
         public static void Initialize(bool enableConsoleLogging)
         {
+            //reset if logger is activated
+            if (isActive)
+            {
+                End();
+            }
+
             //set log output folder
             LogPath = defaultLogFolder;
             isPathSet = true;
@@ -105,6 +116,7 @@ namespace LoggerLib
             Directory.CreateDirectory(LogPath);
 
             LogSetup();
+            isActive = true;
             Begin();
         }
         /// <summary>
@@ -116,6 +128,12 @@ namespace LoggerLib
         /// <param name="logFolder">Folder to store logs. WARNING: it will be emptied in certain conditions</param>
         public static void Initialize(string logFolder)
         {
+            //reset if logger is activated
+            if (isActive)
+            {
+                End();
+            }
+
             //set log output folder
             LogPath = logFolder;
             isPathSet = true;
@@ -129,6 +147,7 @@ namespace LoggerLib
             Directory.CreateDirectory(LogPath);
 
             LogSetup();
+            isActive = true;
             Begin();
         }
         /// <summary>
@@ -141,6 +160,12 @@ namespace LoggerLib
         /// <param name="enableConsoleLogging">Enable console logging</param>
         public static void Initialize(string logFolder, bool enableConsoleLogging)
         {
+            //reset if logger is activated
+            if (isActive)
+            {
+                End();
+            }
+
             //if console logging is enabled
             if (enableConsoleLogging)
             {
@@ -160,6 +185,7 @@ namespace LoggerLib
             Directory.CreateDirectory(LogPath);
 
             LogSetup();
+            isActive = true;
             Begin();
         }
         /// <summary>
@@ -171,6 +197,12 @@ namespace LoggerLib
         /// <param name="launch_args">Program launch arguments</param>
         public static void Initialize(string[] launch_args)
         {
+            //reset if logger is activated
+            if (isActive)
+            {
+                End();
+            }
+
             ReadArguments(launch_args);
             //set log output folder
             LogPath = defaultLogFolder;
@@ -185,6 +217,7 @@ namespace LoggerLib
             Directory.CreateDirectory(LogPath);
 
             LogSetup();
+            isActive = true;
             Begin();
         }
         /// <summary>
@@ -197,6 +230,12 @@ namespace LoggerLib
         /// <param name="launch_args">Program launch arguments</param>
         public static void Initialize(string logFolder, string[] launch_args)
         {
+            //reset if logger is activated
+            if (isActive)
+            {
+                End();
+            }
+
             ReadArguments(launch_args);
             //set log output folder
             LogPath = logFolder;
@@ -211,12 +250,13 @@ namespace LoggerLib
             Directory.CreateDirectory(LogPath);
 
             LogSetup();
+            isActive = true;
             Begin();
         }
+        #endregion
 
 
-
-        //TYPELESS LOGGING=======================================================================================
+        #region Typeless logging
         /// <summary>
         /// Log a single General message
         /// </summary>
@@ -284,7 +324,8 @@ namespace LoggerLib
                 DispatchError(ErrorType.PathNotSet);
             }
         }
-
+        #endregion
+        #region Typed logging
         //TYPED LOGGING==========================================================================================
         /// <summary>
         /// Log message with a specified type
@@ -418,7 +459,8 @@ namespace LoggerLib
                 DispatchError(ErrorType.PathNotSet);
             }
         }
-
+        #endregion
+        #region Queued logging
         //QUEUED LOGGING=========================================================================================
         /// <summary>
         /// Add General message to the log queue
@@ -499,16 +541,39 @@ namespace LoggerLib
         /// Message queue
         /// </summary>
         private static List<string> queue = new List<string>();
+        #endregion
 
-        //ERROR LOGGING==========================================================================================
+        #region Exception logging
+        //EXCEPTION LOGGING==========================================================================================
         /// <summary>
-        /// Runs dangerous piece of code inside a try/catch and logs exception.
+        /// Logs and exception and then throws it. To be used in <see langword="catch"/> block
+        /// </summary>
+        /// <typeparam name="T">Type of exception</typeparam>
+        /// <param name="ex">Exception that has to be thrown</param>
+        /// <param name="logTrace">Whether to log stack</param>
+        public static void LogAndThrow<T>(T ex, bool logTrace) where T : Exception
+        {
+            ErrorCount++;
+            DividerDashedLine(ConsoleColor.Red);
+            Log(MessageType.HighAlert, $"{ex.GetType().Name} occured in {ex.TargetSite.DeclaringType.FullName}");
+            if (logTrace)
+            {
+                Log(MessageType.HighAlertSub, "Call stack:");
+                Console.ForegroundColor = ConsoleColor.White;
+                Log(ex.StackTrace);
+            }
+            DividerDashedLine(ConsoleColor.Red);
+            throw ex;
+        }
+
+        /// <summary>
+        /// Runs dangerous piece of code inside a <see langword="try"/>/<see langword="catch"/> and logs exception.
         /// </summary>
         /// <typeparam name="T">Dangerous function Return type</typeparam>
         /// <param name="dangerousCode">Code that can throw an exception</param>
         /// <param name="logTrace">Whether to log stack</param>
         /// <returns></returns>
-        public static T Catch<T>(Func<T> dangerousCode, bool logTrace)
+        public static T Try<T>(Func<T> dangerousCode, bool logTrace)
         {
             try
             {
@@ -530,12 +595,12 @@ namespace LoggerLib
             }
         }
         /// <summary>
-        /// Runs dangerous piece of code inside a try/catch and logs exception.
+        /// Runs dangerous piece of code inside a <see langword="try"/>/<see langword="catch"/> and logs exception.
         /// </summary>
         /// <param name="dangerousCode">Code that can throw an exception</param>
         /// <param name="logTrace">Whether to log stack</param>
         /// <returns></returns>
-        public static void Catch(Action dangerousCode, bool logTrace)
+        public static void Try(Action dangerousCode, bool logTrace)
         {
             try
             {
@@ -556,8 +621,118 @@ namespace LoggerLib
                 throw ex;
             }
         }
+        /// <summary>
+        /// Runs dangerous piece of code inside a <see langword="try"/>/<see langword="catch"/> and logs exception.
+        /// </summary>
+        /// <typeparam name="T">Dangerous function Return type</typeparam>
+        /// <param name="dangerousCode">Code that can throw an exception</param>
+        /// <param name="logTrace">Whether to log stack</param>
+        /// <returns></returns>
+        public static T Try<T>(Func<T> dangerousCode)
+        {
+            try
+            {
+                return dangerousCode.Invoke();
+            }
+            catch (Exception ex)
+            {
+                ErrorCount++;
+                DividerDashedLine(ConsoleColor.Red);
+                Log(MessageType.HighAlert, $"{ex.GetType().Name} occured in {ex.TargetSite.DeclaringType.FullName}");
+                DividerDashedLine(ConsoleColor.Red);
+                throw ex;
+            }
+        }
+        /// <summary>
+        /// Runs dangerous piece of code inside a <see langword="try"/>/<see langword="catch"/> and logs exception.
+        /// </summary>
+        /// <param name="dangerousCode">Code that can throw an exception</param>
+        /// <param name="logTrace">Whether to log stack</param>
+        /// <returns></returns>
+        public static void Try(Action dangerousCode)
+        {
+            try
+            {
+                dangerousCode.Invoke();
+            }
+            catch (Exception ex)
+            {
+                ErrorCount++;
+                DividerDashedLine(ConsoleColor.Red);
+                Log(MessageType.HighAlert, $"{ex.GetType().Name} occured in {ex.TargetSite.DeclaringType.FullName}");
+                DividerDashedLine(ConsoleColor.Red);
+                throw ex;
+            }
+        }
 
+        /// <summary>
+        /// Runs dangerous piece of code inside a <see langword="try"/>/<see langword="catch"/> and logs exception.
+        /// </summary>
+        /// <typeparam name="T">Dangerous function Return type</typeparam>
+        /// <param name="tryFunc">Code that can throw an exception</param>
+        /// <param name="catchFunc">Catch Func code</param>
+        /// <param name="logTrace">Whether to log stack</param>
+        /// <returns></returns>
+        public static T TryAndCatch<T>(Func<T> tryFunc, Func<T> catchFunc, bool logTrace)
+        {
+            try
+            {
+                return tryFunc.Invoke();
+            }
+            catch (Exception ex)
+            {
+                ErrorCount++;
+                DividerDashedLine(ConsoleColor.Red);
+                Log(MessageType.HighAlert, $"{ex.GetType().Name} occured in {ex.TargetSite.DeclaringType.FullName}");
+                if (logTrace)
+                {
+                    Log(MessageType.HighAlertSub, "Call stack:");
+                    Console.ForegroundColor = ConsoleColor.White;
+                    Log(ex.StackTrace);
+                }
+                DividerDashedLine(ConsoleColor.Red);
 
+                Log(MessageType.HighAlertSub, "Executing reaction...");
+                Console.ResetColor();
+                return catchFunc.Invoke();
+                //throw ex;
+            }
+        }
+        /// <summary>
+        /// Runs dangerous piece of code inside a <see langword="try"/>/<see langword="catch"/> and logs exception.
+        /// </summary>
+        /// <param name="dangerousCode">Code that can throw an exception</param>
+        /// <param name="catchAct">Catch Action code</param>
+        /// <param name="logTrace">Whether to log stack</param>
+        /// <returns></returns>
+        public static void TryAndCatch(Action dangerousCode, Action catchAct, bool logTrace)
+        {
+            try
+            {
+                dangerousCode.Invoke();
+            }
+            catch (Exception ex)
+            {
+                ErrorCount++;
+                DividerDashedLine(ConsoleColor.Red);
+                Log(MessageType.HighAlert, $"{ex.GetType().Name} occured in {ex.TargetSite.DeclaringType.FullName}");
+                if (logTrace)
+                {
+                    Log(MessageType.HighAlertSub, "Call stack:");
+                    Console.ForegroundColor = ConsoleColor.White;
+                    Log(ex.StackTrace);
+                }
+                DividerDashedLine(ConsoleColor.Red);
+
+                Log(MessageType.HighAlertSub, "Executing reaction...");
+                Console.ResetColor();
+                catchAct.Invoke();
+                //throw ex;
+            }
+        }
+
+        #endregion
+        #region Dividers
         //DIVIDERS===============================================================================================
         /// <summary>
         /// Adds an empty line to the log
@@ -640,8 +815,10 @@ namespace LoggerLib
                 }
             }
         }
+        #endregion
 
-        //STATES AND PATHS=======================================================================================
+
+        #region States and paths
         /// <summary>
         /// Default log folder
         /// </summary>
@@ -668,8 +845,12 @@ namespace LoggerLib
         /// Should library throw error or relay it to the event
         /// </summary>
         private static bool throwError = false;
-
-
+        /// <summary>
+        /// Is logger activated or not
+        /// </summary>
+        private static bool isActive = false;
+        #endregion
+        #region Events
         //EVENTS=================================================================================================
         /// <summary>
         /// Delegate for logger errors
@@ -681,8 +862,8 @@ namespace LoggerLib
         /// Invoked on logger error, use to relay error information to your error handler
         /// </summary>
         public static event LogError OnLogError;
-
-
+        #endregion
+        #region Enums
         //ENUMS==================================================================================================
         /// <summary>
         /// Types of console arguments
@@ -712,8 +893,8 @@ namespace LoggerLib
             /// </summary>
             PathNotAccessible = 1,
         }
-
-
+        #endregion
+        #region Dictionaries
         //DICTIONARIES===========================================================================================
         /// <summary>
         /// Message default prefix dictionary
@@ -768,15 +949,15 @@ namespace LoggerLib
                 { ErrorType.PathNotSet, "Log path is not set. Have you used Initialize?" },
                 { ErrorType.PathNotAccessible, "Cannot access log directory." },
             };
-
-
+        #endregion
+        #region Miscellanious
         //MISCELLANEOUS==========================================================================================
         /// <summary>
         /// Reads launch arguments and enables required parametres
         /// </summary>
         /// <param name="launch_args"></param>
         private static void ReadArguments(string[] launch_args)
-        { 
+        {
             if (launch_args.Length != 0)
             {
                 //if launch argument for console logging is provided, enable console logging
@@ -805,7 +986,8 @@ namespace LoggerLib
             try
             {
                 //get all filenames containing "log"
-                string[] files = Directory.GetFiles(LogPath).Where<string>(file => file.Contains("log")).ToArray();
+                string[] files = Directory.GetFiles(LogPath)
+                    .Where<string>(file => file.Contains("log")).ToArray();
                 //file rotation controller
                 switch (files.Length)
                 {
@@ -1004,12 +1186,13 @@ namespace LoggerLib
             }
             OnLogError?.Invoke(errorType, ErrorMessages[errorType]);
         }
-
-
+        #endregion
+        #region Stats
         //STATS==================================================================================================
         /// <summary>
         /// Number of logged errors 
         /// </summary>
-        public static int ErrorCount { get; private set; } = 0
+        public static int ErrorCount { get; private set; } = 0;
+        #endregion
     }
 }
